@@ -18,3 +18,16 @@ Security-sensitive areas include canonicalization ambiguity, path escape, symlin
 attestation disclosure, cross-split duplicate bypass, seal authentication, key handling,
 and unsafe plugin behavior. The documented trust boundaries in
 [`docs/threat-model.md`](docs/threat-model.md) are part of the security contract.
+
+## Release publication
+
+The release workflow accepts an existing version tag, builds the distributions, and uses
+`gh release create` to attach every asset while the release is still a draft before
+publication. Closure requires the GitHub Releases API to report `immutable: true` and
+GitHub's automatic release attestation to verify. Release v0.2.3 predates repository
+release immutability and cannot be made immutable retroactively.
+
+Before checkout, the workflow resolves lightweight or annotated version tags through the
+GitHub API and requires the target commit to equal the current protected `main` commit.
+It checks out that verified commit SHA. Active repository rules block updates and
+deletions of `v*` tags without bypass actors.
