@@ -11,7 +11,7 @@ from pathlib import Path
 TAG_PATTERN = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+")
 EMAIL_PATTERN = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
 HANDLE_PATTERN = re.compile(r"(?<![A-Za-z0-9_])@[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\b")
-TRAILER_PATTERN = re.compile(r"(?im)^\s*(?:assisted-by|co-authored-by|signed-off-by|generated-by):")
+TRAILER_PATTERN = re.compile(r"(?im)^\s*[a-z][a-z0-9-]*-by:")
 AUTHOR_CREDIT_PATTERN = re.compile(
     r"\s+by\s+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\s+in\s+"
     r"(?P<url>https://github\.com/[^/\s]+/[^/\s]+/pull/(?P<number>[0-9]+))\s*$"
@@ -22,7 +22,10 @@ PRIVATE_REFERENCE_PATTERNS = (
     re.compile(r"(?i)\bindependent\s+review\b"),
     re.compile(re.escape("Mission" + " Control"), re.IGNORECASE),
     re.compile(re.escape("startup" + "-idea"), re.IGNORECASE),
-    re.compile(r"(?i)tovellan-(?:platform|bench|codex|design|trust|web)\b"),
+    re.compile(
+        r"(?i)tovellan-(?:platform|bench|codex|design|trust|web|infra|handbook|"
+        r"research|brand|sdk|gst-bench)\b"
+    ),
     re.compile(re.escape("GST" + "-Bench"), re.IGNORECASE),
     re.compile("61f214" + "e7272095", re.IGNORECASE),
     re.compile("d57d6f" + "04a22e1e", re.IGNORECASE),
@@ -31,7 +34,7 @@ PRIVATE_REFERENCE_PATTERNS = (
 PRODUCT_POSITIONING_PATTERNS = (
     re.compile(r"(?i)\bfounders?\b"),
     re.compile(r"(?i)(?<![a-z])yc(?![a-z])"),
-    re.compile(r"(?i)\bhumanization\b"),
+    re.compile(r"(?i)\bhumani[sz](?:e[ds]?|ing|ation)\b"),
 )
 LOCAL_PATH_PATTERNS = (
     re.compile(re.escape("/" + "Users" + "/"), re.IGNORECASE),
