@@ -1,54 +1,119 @@
 name: Release assets
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing annotated or signed v-prefixed release tag
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: release-assets-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
 jobs:
   build:
-    name: Build and attach Python distributions
+    name: Build, publish, and verify release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       artifact-metadata: write
       attestations: write
       contents: write
       id-token: write
     steps:
+      - name: Verify release tag targets protected main
+        id: verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release tag must be an exact v-prefixed semantic version" >&2
+            exit 1
+          fi
+          object_type="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.type')"
+          object_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+          if [ "$object_type" != "tag" ]; then
+            echo "release tag must be an annotated or signed tag object" >&2
+            exit 1
+          fi
+          for attempt in 1 2 3 4 5; do
+            if [ "$object_type" = "commit" ]; then
+              break
+            fi
+            if [ "$object_type" != "tag" ]; then
+              echo "release tag does not resolve to a commit" >&2
+              exit 1
+            fi
+            tag_object="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$object_sha")"
+            object_type="$(jq -r '.object.type' <<<"$tag_object")"
+            object_sha="$(jq -r '.object.sha' <<<"$tag_object")"
+          done
+          if [ "$object_type" != "commit" ]; then
+            echo "release tag indirection is too deep" >&2
+            exit 1
+          fi
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$object_sha" != "$main_sha" ]; then
+            echo "release tag must target the current protected main commit" >&2
+            exit 1
+          fi
+          printf 'target_sha=%s\n' "$object_sha" >> "$GITHUB_OUTPUT"
       - name: Check out release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+          ref: ${{ steps.verify-tag.outputs.target_sha }}
       - name: Install Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
+      - name: Verify tag matches package version
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          package_version="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if [ "$RELEASE_TAG" != "v$package_version" ]; then
+            echo "release tag does not match package version" >&2
+            exit 1
+          fi
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Build tag-matched distributions and checksums
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: python scripts/release_assets.py --tag "$RELEASE_TAG" --output-dir dist
       - name: Attest wheel and source archive provenance
         uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-checksums: dist/SHA256SUMS
-      - name: Attach distributions and checksums to the GitHub release
+      - name: Create release with attached distributions
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$RELEASE_TAG" dist/*
-      - name: Record GitHub release immutability state
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes
+      - name: Verify immutable release and automatic attestation
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           state="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.immutable')"
-          case "$state" in
-            true|false) ;;
-            *) echo "GitHub release immutable field is missing or invalid" >&2; exit 1 ;;
-          esac
-          printf 'GitHub release immutable: %s\n' "$state"
-          printf 'GitHub release immutable: `%s`\n' "$state" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$state" != "true" ]; then
+            echo "GitHub release is not immutable" >&2
+            exit 1
+          fi
+          for attempt in 1 2 3 4 5; do
+            if gh release verify "$RELEASE_TAG" --format json >/dev/null; then
+              printf 'GitHub release immutable: true\n'
+              printf 'GitHub automatic release attestation: verified\n'
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "GitHub automatic release attestation verification failed" >&2
+          exit 1
