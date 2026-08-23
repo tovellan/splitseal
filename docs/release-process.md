@@ -1,7 +1,7 @@
 # Release process
 
-Maintainers release from a clean `main` checkout. Repository release immutability and the
-no-bypass `v*` update and deletion rules must remain enabled.
+Maintainers release from a clean `main` checkout. Organization-enforced release
+immutability and the no-bypass `v*` update and deletion rules must remain enabled.
 
 1. Update `CHANGELOG.md` and confirm package, manifest, and tool versions agree.
 2. Run `make release-gate`.

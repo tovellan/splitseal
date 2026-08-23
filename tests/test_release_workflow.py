@@ -38,8 +38,9 @@ def _step_index(name: str) -> int:
 
 def test_release_preflight_precedes_verified_checkout() -> None:
     preflight = _run("Verify release tag targets protected main")
-    assert "immutable-releases" in preflight
-    assert "'.enabled'" in preflight
+    assert "repos/$GITHUB_REPOSITORY/immutable-releases" not in WORKFLOW_PATH.read_text(
+        encoding="utf-8"
+    )
     assert "/git/ref/tags/$RELEASE_TAG" in preflight
     assert "/git/tags/$object_sha" in preflight
     assert ".tagger.name" in preflight
@@ -112,8 +113,6 @@ def test_release_publication_is_draft_first_and_resumable() -> None:
     assert "draft-assets.json" in attach_run
 
     publish_run = _run("Publish complete draft release")
-    assert "immutable-releases" in publish_run
-    assert "'.enabled'" in publish_run
     assert "--method PATCH" in publish_run
     assert "-F draft=false" in publish_run
     assert "gh release create" not in WORKFLOW_PATH.read_text(encoding="utf-8")

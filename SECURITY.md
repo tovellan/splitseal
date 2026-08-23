@@ -27,14 +27,15 @@ publication. Closure requires the GitHub Releases API to report `immutable: true
 GitHub's automatic release attestation to verify. The GitHub Releases API reports
 `immutable: false` for release v0.2.3.
 
+Organization policy enforces immutable releases for this repository. The release job does
+not receive an organization Administration token and cannot weaken that prerequisite.
 Before checkout, the workflow requires an annotated or signed version-tag object, resolves
 it through the GitHub API, and requires a new release target to equal the current protected
 `main` commit. Every tag object must use the generic maintainer name and email documented
 in the release process plus its exact public annotation. Generated release notes remove
 contributor credits and pass the complete public-text policy before draft creation. The
-workflow does not print removed account metadata. It also requires repository release
-immutability before checkout and again immediately before publication, then checks out the
-verified commit SHA. A partial draft rerun
+workflow does not print removed account metadata and checks out only the verified commit
+SHA. A partial draft rerun
 accepts a tag that remains in protected `main` history, verifies existing asset bytes, and
 resumes missing uploads without overwriting conflicts. A published-release rerun performs
 a protected-tag rebuild and requires exact remote names, SHA-256 digests, and bytes without

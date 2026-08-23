@@ -13,15 +13,14 @@ project uses Semantic Versioning.
   `main`, then build from the verified commit SHA.
 - Require the release ref to begin with an annotated or signed tag object rather than a
   lightweight tag.
-- Require repository release immutability and generic tagger metadata before publication.
+- Depend on organization-enforced release immutability and require generic tagger metadata.
 - Make release-attestation verification retryable without attempting to recreate an
   already published release.
 - Resume partial draft uploads without overwriting conflicting assets, and allow
   verification-only reruns after protected `main` advances.
 - Bind manual release dispatches to the exact protected version-tag revision and require
   server-side immutable action SHA pins.
-- Recheck release immutability immediately before publication and validate tag annotations
-  plus generated release notes as public metadata.
+- Validate tag annotations and generated release notes as public metadata.
 - Require exact draft and published remote asset names, SHA-256 digests, and bytes against
   a protected-tag rebuild.
 - Remove the build tool's hidden output helper before exact release-asset validation.

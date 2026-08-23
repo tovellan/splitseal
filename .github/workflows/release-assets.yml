@@ -33,11 +33,6 @@ jobs:
             echo "release tag must be an exact v-prefixed semantic version" >&2
             exit 1
           fi
-          immutability_enabled="$(gh api "repos/$GITHUB_REPOSITORY/immutable-releases" --jq '.enabled')"
-          if [ "$immutability_enabled" != "true" ]; then
-            echo "repository release immutability must be enabled before publication" >&2
-            exit 1
-          fi
           object_type="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.type')"
           object_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
           if [ "$object_type" != "tag" ]; then
@@ -226,11 +221,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ID: ${{ steps.release.outputs.release_id }}
         run: |
-          immutability_enabled="$(gh api "repos/$GITHUB_REPOSITORY/immutable-releases" --jq '.enabled')"
-          if [ "$immutability_enabled" != "true" ]; then
-            echo "repository release immutability was disabled before publication" >&2
-            exit 1
-          fi
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
             -F draft=false >/dev/null
       - name: Verify exact published assets
