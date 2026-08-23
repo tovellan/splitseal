@@ -21,6 +21,10 @@ Pull requests should explain the problem, compatibility effect, security effect,
 validation performed. By contributing, you agree that your contribution is licensed
 under Apache License 2.0.
 
+External GitHub Actions must use a full 40-character commit SHA. Version tags, branches,
+short SHAs, dynamic action expressions, and mutable container tags fail the repository
+audit. Keep the human-readable upstream version in a trailing comment.
+
 Public commits and merge commits must use the generic organization identity
 `Tovellan Maintainers <noreply@github.com>`. Do not publish personal names or email
 addresses in commit metadata, and do not add authorship or generator-attribution trailers.
