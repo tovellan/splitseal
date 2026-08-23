@@ -80,3 +80,10 @@ def test_key_material_has_a_minimum_length() -> None:
         validate_secret(b"short")
     assert caught.value.code == "SS041"
     assert len(generate_secret()) == 32
+
+
+@pytest.mark.parametrize("secret", [None, "x" * 32, bytearray(32), 32])
+def test_key_material_rejects_wrong_runtime_types(secret: object) -> None:
+    with pytest.raises(SplitSealError) as caught:
+        validate_secret(secret)  # type: ignore[arg-type]
+    assert caught.value.code == "SS041"

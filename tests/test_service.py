@@ -53,6 +53,22 @@ def test_freeze_and_verify_current_sources(project: Path) -> None:
     assert mode == 0o600
 
 
+def test_freeze_rejects_non_byte_key_without_outputs(project: Path) -> None:
+    invalid_key = "not-byte-key-material"
+    with pytest.raises(SplitSealError) as caught:
+        freeze_release(
+            root=project,
+            config_path="splitseal.toml",
+            seal_path="artifacts/release.sseal",
+            attestation_path="artifacts/release.attestation.json",
+            secret=invalid_key,  # type: ignore[arg-type]
+        )
+
+    assert caught.value.code == "SS041"
+    assert not (project / "artifacts" / "release.sseal").exists()
+    assert not (project / "artifacts" / "release.attestation.json").exists()
+
+
 def test_public_and_private_outer_outputs_do_not_contain_records_or_membership(
     project: Path,
 ) -> None:
