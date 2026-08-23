@@ -3,6 +3,13 @@
 All notable changes are recorded here. The format follows Keep a Changelog and the
 project uses Semantic Versioning.
 
+## [0.2.2] - 2026-08-24
+
+### Changed
+
+- Exercise public-attestation validation, including its explicit no-authentication result,
+  from the built wheel in the clean-install release gate.
+
 ## [0.2.1] - 2026-08-24
 
 ### Changed
@@ -44,6 +51,7 @@ project uses Semantic Versioning.
 - JSON and SARIF 2.1.0 reports.
 - Repository-root containment, Unicode normalization, and symlink checks.
 
+[0.2.2]: https://github.com/tovellan/splitseal/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/tovellan/splitseal/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tovellan/splitseal/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/tovellan/splitseal/compare/v0.1.0...v0.1.1

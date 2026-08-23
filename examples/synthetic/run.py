@@ -7,7 +7,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from splitseal import freeze_release, verify_release
+from splitseal import freeze_release, validate_public_attestation, verify_release
 from splitseal.crypto import generate_secret
 
 
@@ -26,6 +26,10 @@ def main() -> None:
             attestation_path="artifacts/release.attestation.json",
             secret=secret,
         )
+        public_validation = validate_public_attestation(
+            root=root,
+            attestation_path="artifacts/release.attestation.json",
+        )
         verified = verify_release(
             root=root,
             seal_path="artifacts/release.sseal",
@@ -33,7 +37,16 @@ def main() -> None:
             config_path="splitseal.toml",
             secret=secret,
         )
-        print(json.dumps({"freeze": created, "verify": verified}, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "freeze": created,
+                    "public_validation": public_validation,
+                    "verify": verified,
+                },
+                sort_keys=True,
+            )
+        )
 
 
 if __name__ == "__main__":
