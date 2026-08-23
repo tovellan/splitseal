@@ -13,20 +13,20 @@ immutability and the no-bypass `v*` update and deletion rules must remain enable
 6. Dispatch the `Release assets` workflow from the exact protected `vX.Y.Z` tag ref and
    supply that same tag as its input. Never select a branch or another tag as the workflow
    revision. Do not create the GitHub release or attach assets manually: the workflow
-   exclusively builds the wheel, source archive, and `SHA256SUMS`, attaches all three,
-   and publishes the complete draft before verifying immutability and the automatic
-   release attestation. Before draft creation, generated notes remove contributor credits
-   and validate the complete public-text policy without printing the removed account
-   metadata.
+   exclusively builds the wheel, source archive, and `SHA256SUMS`, records and verifies
+   exact distribution provenance, attaches all three, and publishes the complete draft
+   before verifying immutability and the automatic release attestation. Before draft
+   creation, generated notes remove contributor credits and validate the complete
+   public-text policy without printing the removed account metadata.
 
 The workflow is safe to rerun after a partial draft upload: it resumes the existing draft,
 keeps byte-identical assets, replaces only incomplete uploads, and refuses conflicting
 or unexpected assets. After publication it rebuilds from the protected tag, requires exact
 remote asset names and SHA-256 digests plus byte equality, skips upload and publication,
-and repeats immutable-release and attestation verification. These recovery paths require
-the tag target to remain in protected `main` history, although it need not remain the branch
-tip. The workflow does not publish to PyPI, another package registry, or a container
-registry.
+and repeats exact distribution-provenance, immutable-release, and automatic-attestation
+verification. These recovery paths require the tag target to remain in protected `main`
+history, although it need not remain the branch tip. The workflow does not publish to
+PyPI, another package registry, or a container registry.
 
 `make release-gate` performs tests, formatting checks, lint, static typing, package build,
 wheel installation, example execution, dependency audit, text policy checks, tracked-file
