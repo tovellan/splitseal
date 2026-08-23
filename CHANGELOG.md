@@ -3,6 +3,14 @@
 All notable changes are recorded here. The format follows Keep a Changelog and the
 project uses Semantic Versioning.
 
+## [Unreleased]
+
+### Changed
+
+- Require an exact release-tag and package-version match before building release assets.
+- Publish a sorted `SHA256SUMS` file with the wheel and source archive, and refuse stale
+  output directories or release-asset overwrites.
+
 ## [0.2.3] - 2026-08-24
 
 ### Added
@@ -58,6 +66,7 @@ project uses Semantic Versioning.
 - JSON and SARIF 2.1.0 reports.
 - Repository-root containment, Unicode normalization, and symlink checks.
 
+[Unreleased]: https://github.com/tovellan/splitseal/compare/v0.2.3...HEAD
 [0.2.3]: https://github.com/tovellan/splitseal/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/tovellan/splitseal/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/tovellan/splitseal/compare/v0.2.0...v0.2.1

@@ -30,6 +30,13 @@ registry. Install a tagged source release from GitHub:
 python -m pip install "splitseal @ git+https://github.com/tovellan/splitseal.git@v0.2.3"
 ```
 
+Tagged GitHub releases include a wheel, a source archive, and `SHA256SUMS`. Download all
+three files and verify the distributions before installation:
+
+```console
+shasum -a 256 -c SHA256SUMS
+```
+
 For Parquet input, add the optional dependency after cloning:
 
 ```console

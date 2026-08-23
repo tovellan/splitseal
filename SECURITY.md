@@ -18,3 +18,10 @@ Security-sensitive areas include canonicalization ambiguity, path escape, symlin
 attestation disclosure, cross-split duplicate bypass, seal authentication, key handling,
 and unsafe plugin behavior. The documented trust boundaries in
 [`docs/threat-model.md`](docs/threat-model.md) are part of the security contract.
+
+## Release artifacts
+
+The release workflow requires the Git tag to match the package version exactly. It builds
+into an empty directory and publishes a sorted `SHA256SUMS` alongside the wheel and source
+archive. Asset upload refuses overwrites. Checksums establish download integrity against
+the GitHub release; they are not a publisher signature or an independent transparency log.
