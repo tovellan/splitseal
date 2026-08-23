@@ -1,0 +1,15 @@
+schema_version = "splitseal.config.v1"
+
+[release]
+name = "synthetic-arithmetic"
+version = "1.0.0"
+
+[[splits]]
+name = "development"
+path = "data/development.jsonl"
+format = "jsonl"
+
+[[splits]]
+name = "private-evaluation"
+path = "data/private-evaluation.csv"
+format = "csv"
