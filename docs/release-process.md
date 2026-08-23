@@ -13,10 +13,11 @@ no-bypass `v*` update and deletion rules must remain enabled.
 6. Dispatch the `Release assets` workflow from the exact protected `vX.Y.Z` tag ref and
    supply that same tag as its input. Never select a branch or another tag as the workflow
    revision. Do not create the GitHub release or attach assets manually: the workflow
-   exclusively builds, attaches, and publishes all assets before verifying immutability
-   and the automatic release attestation. Before draft creation, generated notes remove
-   contributor credits and validate the complete public-text policy without printing the
-   removed account metadata.
+   exclusively builds the wheel, source archive, and `SHA256SUMS`, attaches all three,
+   and publishes the complete draft before verifying immutability and the automatic
+   release attestation. Before draft creation, generated notes remove contributor credits
+   and validate the complete public-text policy without printing the removed account
+   metadata.
 
 The workflow is safe to rerun after a partial draft upload: it resumes the existing draft,
 keeps byte-identical assets, replaces only incomplete uploads, and refuses conflicting
