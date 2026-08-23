@@ -10,6 +10,7 @@ project uses Semantic Versioning.
 - Require an exact release-tag and package-version match before building release assets.
 - Publish a sorted `SHA256SUMS` file with the wheel and source archive, and refuse stale
   output directories or release-asset overwrites.
+- Scope checksum instructions to releases produced after the new workflow takes effect.
 
 ### Fixed
 
