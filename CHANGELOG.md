@@ -24,6 +24,7 @@ project uses Semantic Versioning.
   plus generated release notes as public metadata.
 - Require exact draft and published remote asset names, SHA-256 digests, and bytes against
   a protected-tag rebuild.
+- Remove the build tool's hidden output helper before exact release-asset validation.
 
 ## [0.2.3] - 2026-08-24
 

@@ -92,6 +92,10 @@ def test_release_publication_is_draft_first_and_resumable() -> None:
     assert "'{name: $name, body: .body}'" in metadata_run
     assert "scripts/validate_release_metadata.py" in metadata_run
 
+    build_run = _run("Build distributions")
+    assert "uv build" in build_run
+    assert "rm -f dist/.gitignore" in build_run
+
     attach_run = _run("Attach exact draft assets")
     assert "/assets?per_page=100" in attach_run
     assert "'.state'" in attach_run
