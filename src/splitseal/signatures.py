@@ -107,7 +107,10 @@ def _require_fields(
     *,
     code: str,
 ) -> None:
-    actual = set(value)
+    actual_keys = list(value)
+    if not all(isinstance(key, str) for key in actual_keys):
+        raise fail(code, "signature artifact field names must be strings", context=context)
+    actual = set(actual_keys)
     extra = sorted(actual - expected)
     missing = sorted(expected - actual)
     if extra or missing:
@@ -151,7 +154,7 @@ def _parse_trust_entries(
         if not isinstance(key_id, str) or not _KEY_ID.fullmatch(key_id):
             raise fail("SS071", "trust store key_id is malformed", index=index)
         status = raw_entry["status"]
-        if status not in {"active", "revoked"}:
+        if not isinstance(status, str) or status not in {"active", "revoked"}:
             raise fail("SS071", "trust store key status is invalid", key_id=key_id)
         public_bytes = _b64decode(raw_entry["public_key"], "public_key", code="SS071")
         if len(public_bytes) != _ED25519_PUBLIC_KEY_BYTES:

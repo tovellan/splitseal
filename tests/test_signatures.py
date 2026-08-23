@@ -180,9 +180,16 @@ def test_rotation_and_all_history_revocation(project: Path) -> None:
         lambda value: value.pop("algorithm"),
         lambda value: value.update({"schema_version": "unknown"}),
         lambda value: value.update({"algorithm": "rsa"}),
+        lambda value: value.update({"algorithm": []}),
         lambda value: value.update({"key_id": 4}),
+        lambda value: value.update({"key_id": {}}),
+        lambda value: value.update({"attestation_sha256": []}),
+        lambda value: value.update({"attestation_sha256": {}}),
+        lambda value: value.update({"attestation_sha256": "0" * 63}),
         lambda value: value.update({"attestation_sha256": "A" * 64}),
+        lambda value: value.update({"attestation_sha256": "g" * 64}),
         lambda value: value.update({"signature": "="}),
+        lambda value: value.update({"signature": {}}),
         lambda value: value.update({"signature": _b64(b"short")}),
     ],
 )
@@ -230,6 +237,19 @@ def test_noncanonical_signature_and_cryptographic_mismatches(project: Path) -> N
     assert authentication.value.code == "SS074"
 
 
+def test_modified_attestation_fails_signature_digest_check(project: Path) -> None:
+    attestation_path = _freeze(project)
+    entry = _write_material(project, 0, "first")
+    (project / "keys" / "trust.json").write_bytes(trust_store_bytes([entry]))
+    _sign(project)
+    attestation = json.loads(attestation_path.read_bytes())
+    attestation["release"]["version"] = "1.0.1"
+    attestation_path.write_bytes(canonicalize(attestation) + b"\n")
+    with pytest.raises(SplitSealError) as modified:
+        _verify(project)
+    assert modified.value.code == "SS074"
+
+
 def test_unknown_key_and_malformed_private_key(project: Path) -> None:
     _freeze(project)
     _write_material(project, 0, "first")
@@ -272,12 +292,18 @@ def test_trust_store_schema_and_entry_failures(project: Path) -> None:
         lambda value: value.update({"unknown": True}),
         lambda value: value.update({"schema_version": "unknown"}),
         lambda value: value.update({"keys": []}),
+        lambda value: value.update({"keys": {}}),
         lambda value: value.update({"keys": [4]}),
         lambda value: value["keys"][0].update({"unknown": True}),
         lambda value: value["keys"][0].update({"algorithm": "rsa"}),
+        lambda value: value["keys"][0].update({"algorithm": []}),
         lambda value: value["keys"][0].update({"key_id": "bad"}),
+        lambda value: value["keys"][0].update({"key_id": {}}),
         lambda value: value["keys"][0].update({"status": "unknown"}),
+        lambda value: value["keys"][0].update({"status": []}),
+        lambda value: value["keys"][0].update({"status": {}}),
         lambda value: value["keys"][0].update({"public_key": "="}),
+        lambda value: value["keys"][0].update({"public_key": {}}),
         lambda value: value["keys"][0].update({"public_key": _b64(b"short")}),
         lambda value: value["keys"][0].update({"public_key": _b64(bytes(32))}),
         lambda value: value.update({"keys": [value["keys"][0], value["keys"][0]]}),
@@ -291,6 +317,40 @@ def test_trust_store_schema_and_entry_failures(project: Path) -> None:
         with pytest.raises(SplitSealError) as caught:
             _verify(project)
         assert caught.value.code == "SS071"
+
+
+@pytest.mark.parametrize("status", [[], {}])
+def test_trust_store_container_status_has_machine_cli_error(
+    project: Path,
+    capsys: pytest.CaptureFixture[str],
+    status: object,
+) -> None:
+    _freeze(project)
+    entry = _write_material(project, 0, "first")
+    _sign(project)
+    malformed_entry: dict[str, Any] = dict(entry)
+    malformed_entry["status"] = status
+    (project / "keys" / "trust.json").write_bytes(
+        canonicalize({"schema_version": "splitseal.trust-store.v1", "keys": [malformed_entry]})
+        + b"\n"
+    )
+    assert (
+        main(
+            [
+                "verify-signature",
+                "--root",
+                str(project),
+                "--attestation",
+                "artifacts/signature.attestation.json",
+                "--signature",
+                "artifacts/first.signature.json",
+                "--trust-store",
+                "keys/trust.json",
+            ]
+        )
+        == 2
+    )
+    assert json.loads(capsys.readouterr().err)["error"]["code"] == "SS071"
 
 
 def test_key_material_refuses_equal_paths_and_overwrite(project: Path) -> None:

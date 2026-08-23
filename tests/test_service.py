@@ -130,6 +130,8 @@ def test_validate_public_attestation_is_structural_only(project: Path) -> None:
             "SS045",
         ),
         (lambda value: value["checks"].update({"similarity": "unknown"}), "SS045"),
+        (lambda value: value["checks"].update({"similarity": []}), "SS045"),
+        (lambda value: value["checks"].update({"similarity": {}}), "SS045"),
     ],
 )
 def test_validate_public_attestation_rejects_unsafe_or_malformed_fields(

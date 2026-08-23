@@ -452,7 +452,8 @@ def validate_public_attestation(
     )
     if checks["exact_cross_split_duplicates"] != "pass":
         raise fail("SS045", "public attestation exact duplicate check must be pass")
-    if checks["similarity"] not in {"pass", "not_run"}:
+    similarity_status = checks["similarity"]
+    if not isinstance(similarity_status, str) or similarity_status not in {"pass", "not_run"}:
         raise fail("SS045", "public attestation similarity check has an invalid status")
 
     return {
