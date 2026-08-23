@@ -18,6 +18,12 @@ project uses Semantic Versioning.
   already published release.
 - Resume partial draft uploads without overwriting conflicting assets, and allow
   verification-only reruns after protected `main` advances.
+- Bind manual release dispatches to the exact protected version-tag revision and require
+  server-side immutable action SHA pins.
+- Recheck release immutability immediately before publication and validate tag annotations
+  plus generated release notes as public metadata.
+- Require exact draft and published remote asset names, SHA-256 digests, and bytes against
+  a protected-tag rebuild.
 
 ## [0.2.3] - 2026-08-24
 

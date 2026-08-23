@@ -44,9 +44,13 @@ def test_release_preflight_precedes_verified_checkout() -> None:
     assert "/git/tags/$object_sha" in preflight
     assert ".tagger.name" in preflight
     assert ".tagger.email" in preflight
+    assert ".message" in preflight
+    assert '"SplitSeal $RELEASE_TAG"' in preflight
     assert "Tovellan Maintainers" in preflight
     assert "noreply@github.com" in preflight
     assert "/git/ref/heads/main" in preflight
+    assert '"$GITHUB_REF" != "refs/tags/$RELEASE_TAG"' in preflight
+    assert '"$GITHUB_SHA" != "$object_sha"' in preflight
     assert "/compare/$object_sha...$main_sha" in preflight
     assert '"$release_state" = "absent"' in preflight
     assert '"$comparison_status" != "ahead"' in preflight
@@ -58,7 +62,7 @@ def test_release_preflight_precedes_verified_checkout() -> None:
     )
 
     checkout = _step("Check out release tag")
-    assert checkout.get("if") == "steps.verify-tag.outputs.release_state != 'published'"
+    assert "if" not in checkout
     settings = checkout.get("with")
     assert isinstance(settings, Mapping)
     assert settings.get("persist-credentials") is False
@@ -76,6 +80,17 @@ def test_release_publication_is_draft_first_and_resumable() -> None:
     assert "--method POST" in create_run
     assert '"repos/$GITHUB_REPOSITORY/releases"' in create_run
     assert "-F draft=true" in create_run
+    assert '-f name="SplitSeal $RELEASE_TAG"' in create_run
+    assert '-f body="$release_notes"' in create_run
+    assert '"repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID"' in create_run
+    assert "existing-draft.json" in create_run
+    assert "scripts/validate_release_metadata.py" in create_run
+
+    metadata_run = _run("Generate and validate public release notes")
+    assert "/releases/generate-notes" in metadata_run
+    assert "generated-release-notes.json" in metadata_run
+    assert "'{name: $name, body: .body}'" in metadata_run
+    assert "scripts/validate_release_metadata.py" in metadata_run
 
     attach_run = _run("Attach exact draft assets")
     assert "/assets?per_page=100" in attach_run
@@ -84,13 +99,27 @@ def test_release_publication_is_draft_first_and_resumable() -> None:
     assert "gh release upload" in attach_run
     assert "cmp -s" in attach_run
     assert "--clobber" not in attach_run
+    assert "scripts/validate_release_assets.py" in attach_run
+    assert "draft-assets.json" in attach_run
 
     publish_run = _run("Publish complete draft release")
+    assert "immutable-releases" in publish_run
+    assert "'.enabled'" in publish_run
     assert "--method PATCH" in publish_run
     assert "-F draft=false" in publish_run
     assert "gh release create" not in WORKFLOW_PATH.read_text(encoding="utf-8")
 
-    assert _step_index("Build distributions") < _step_index("Create or resume draft release")
+    published_run = _run("Verify exact published assets")
+    assert "scripts/validate_release_assets.py" in published_run
+    assert "published-assets.json" in published_run
+    assert "cmp -s" in published_run
+
+    assert _step_index("Build distributions") < _step_index(
+        "Generate and validate public release notes"
+    )
+    assert _step_index("Generate and validate public release notes") < _step_index(
+        "Create or resume draft release"
+    )
     assert _step_index("Create or resume draft release") < _step_index("Attach exact draft assets")
     assert _step_index("Attach exact draft assets") < _step_index("Publish complete draft release")
     assert _step_index("Publish complete draft release") < _step_index(

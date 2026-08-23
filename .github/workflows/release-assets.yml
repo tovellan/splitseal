@@ -59,11 +59,20 @@ jobs:
               echo "release tag must use the generic maintainer identity" >&2
               exit 1
             fi
+            tag_message="$(jq -r '.message // ""' <<<"$tag_object")"
+            case "$tag_message" in
+              "SplitSeal $RELEASE_TAG"|"SplitSeal $RELEASE_TAG"$'\n-----BEGIN PGP SIGNATURE-----'*) ;;
+              *) echo "release tag must use the exact public annotation message" >&2; exit 1 ;;
+            esac
             object_type="$(jq -r '.object.type' <<<"$tag_object")"
             object_sha="$(jq -r '.object.sha' <<<"$tag_object")"
           done
           if [ "$object_type" != "commit" ]; then
             echo "release tag indirection is too deep" >&2
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != "refs/tags/$RELEASE_TAG" ] || [ "$GITHUB_SHA" != "$object_sha" ]; then
+            echo "workflow must be dispatched from the exact protected release tag" >&2
             exit 1
           fi
           release_record="$(
@@ -100,18 +109,15 @@ jobs:
           printf 'release_state=%s\n' "$release_state" >> "$GITHUB_OUTPUT"
           printf 'release_id=%s\n' "$release_id" >> "$GITHUB_OUTPUT"
       - name: Check out release tag
-        if: steps.verify-tag.outputs.release_state != 'published'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ steps.verify-tag.outputs.target_sha }}
       - name: Install Python
-        if: steps.verify-tag.outputs.release_state != 'published'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
       - name: Verify tag matches package version
-        if: steps.verify-tag.outputs.release_state != 'published'
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
@@ -121,11 +127,30 @@ jobs:
             exit 1
           fi
       - name: Install uv
-        if: steps.verify-tag.outputs.release_state != 'published'
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Build distributions
-        if: steps.verify-tag.outputs.release_state != 'published'
         run: uv build
+      - name: Generate and validate public release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_ID: ${{ steps.verify-tag.outputs.release_id }}
+          RELEASE_STATE: ${{ steps.verify-tag.outputs.release_state }}
+          TARGET_SHA: ${{ steps.verify-tag.outputs.target_sha }}
+        run: |
+          if [ "$RELEASE_STATE" = "published" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+              > "$RUNNER_TEMP/release-notes.json"
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              -f tag_name="$RELEASE_TAG" -f target_commitish="$TARGET_SHA" \
+              > "$RUNNER_TEMP/generated-release-notes.json"
+            jq --arg name "SplitSeal $RELEASE_TAG" \
+              '{name: $name, body: .body}' "$RUNNER_TEMP/generated-release-notes.json" \
+              > "$RUNNER_TEMP/release-notes.json"
+          fi
+          python scripts/validate_release_metadata.py \
+            --tag "$RELEASE_TAG" --input "$RUNNER_TEMP/release-notes.json"
       - name: Create or resume draft release
         id: release
         if: steps.verify-tag.outputs.release_state != 'published'
@@ -136,11 +161,18 @@ jobs:
           RELEASE_STATE: ${{ steps.verify-tag.outputs.release_state }}
         run: |
           if [ "$RELEASE_STATE" = "absent" ]; then
+            release_notes="$(jq -r '.body' "$RUNNER_TEMP/release-notes.json")"
             release_record="$(
               gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
-                -f tag_name="$RELEASE_TAG" -F draft=true -F generate_release_notes=true
+                -f tag_name="$RELEASE_TAG" -f name="SplitSeal $RELEASE_TAG" \
+                -f body="$release_notes" -F draft=true
             )"
             RELEASE_ID="$(jq -r '.id' <<<"$release_record")"
+          else
+            gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+              > "$RUNNER_TEMP/existing-draft.json"
+            python scripts/validate_release_metadata.py \
+              --tag "$RELEASE_TAG" --input "$RUNNER_TEMP/existing-draft.json"
           fi
           printf 'release_id=%s\n' "$RELEASE_ID" >> "$GITHUB_OUTPUT"
       - name: Attach exact draft assets
@@ -175,12 +207,47 @@ jobs:
               exit 1
             fi
           done
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100" |
+            jq '[.[][]]' > "$RUNNER_TEMP/draft-assets.json"
+          python scripts/validate_release_assets.py \
+            --local-dir dist --inventory "$RUNNER_TEMP/draft-assets.json"
       - name: Publish complete draft release
         if: steps.verify-tag.outputs.release_state != 'published'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ID: ${{ steps.release.outputs.release_id }}
-        run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false >/dev/null
+        run: |
+          immutability_enabled="$(gh api "repos/$GITHUB_REPOSITORY/immutable-releases" --jq '.enabled')"
+          if [ "$immutability_enabled" != "true" ]; then
+            echo "repository release immutability was disabled before publication" >&2
+            exit 1
+          fi
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -F draft=false >/dev/null
+      - name: Verify exact published assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.release.outputs.release_id || steps.verify-tag.outputs.release_id }}
+        run: |
+          remote_assets="$(
+            gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100" |
+              jq -c '[.[][]]'
+          )"
+          printf '%s\n' "$remote_assets" > "$RUNNER_TEMP/published-assets.json"
+          python scripts/validate_release_assets.py \
+            --local-dir dist --inventory "$RUNNER_TEMP/published-assets.json"
+          for artifact in dist/*; do
+            asset_name="${artifact##*/}"
+            asset_id="$(jq -r --arg name "$asset_name" '.[] | select(.name == $name) | .id' <<<"$remote_assets")"
+            downloaded="$RUNNER_TEMP/published-$asset_name"
+            gh api -H 'Accept: application/octet-stream' \
+              "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "$downloaded"
+            if ! cmp -s "$artifact" "$downloaded"; then
+              echo "published release asset does not match the verified build: $asset_name" >&2
+              exit 1
+            fi
+          done
       - name: Verify immutable release and automatic attestation
         env:
           GH_TOKEN: ${{ github.token }}

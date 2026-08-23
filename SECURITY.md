@@ -30,9 +30,13 @@ GitHub's automatic release attestation to verify. The GitHub Releases API report
 Before checkout, the workflow requires an annotated or signed version-tag object, resolves
 it through the GitHub API, and requires a new release target to equal the current protected
 `main` commit. Every tag object must use the generic maintainer name and email documented
-in the release process. The workflow also requires repository release immutability to be
-enabled before checkout, then checks out the verified commit SHA. A partial draft rerun
+in the release process plus its exact public annotation. Generated release notes pass a
+public-metadata check before draft creation. The workflow also requires repository release
+immutability before checkout and again immediately before publication, then checks out the
+verified commit SHA. A partial draft rerun
 accepts a tag that remains in protected `main` history, verifies existing asset bytes, and
 resumes missing uploads without overwriting conflicts. A published-release rerun performs
-verification only. Active repository rules block updates and deletions of `v*` tags without
-bypass actors.
+a protected-tag rebuild and requires exact remote names, SHA-256 digests, and bytes without
+uploading or republishing. Active repository rules block updates and deletions of `v*` tags
+without bypass actors. The workflow must itself run from that exact protected tag revision,
+and the repository's server-side Actions policy requires immutable action SHA pins.
