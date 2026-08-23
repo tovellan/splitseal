@@ -15,7 +15,12 @@ from splitseal.crypto import generate_secret, validate_secret
 from splitseal.errors import SplitSealError, fail
 from splitseal.paths import safe_input_path, safe_output_path
 from splitseal.reporting import render_report
-from splitseal.service import diff_releases, freeze_release, verify_release
+from splitseal.service import (
+    diff_releases,
+    freeze_release,
+    validate_public_attestation,
+    verify_release,
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -57,6 +62,18 @@ def _parser() -> argparse.ArgumentParser:
         help="optional relative config path for verification against current sources",
     )
     _format_argument(verify)
+
+    validate_public = subcommands.add_parser(
+        "validate-public",
+        help="validate public attestation structure without authentication",
+    )
+    _root_argument(validate_public)
+    validate_public.add_argument(
+        "--attestation",
+        required=True,
+        help="relative public attestation path",
+    )
+    _format_argument(validate_public)
 
     diff = subcommands.add_parser("diff", help="compare two private release seals")
     _root_argument(diff)
@@ -133,6 +150,11 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             secret=_read_secret(root, args.key_file),
             config_path=args.config,
         )
+    if args.command == "validate-public":
+        return validate_public_attestation(
+            root=root,
+            attestation_path=args.attestation,
+        )
     if args.command == "diff":
         return diff_releases(
             root=root,
@@ -150,6 +172,15 @@ def main(argv: list[str] | None = None) -> int:
     try:
         report = _execute(args)
     except SplitSealError as exc:
+        if args.command == "validate-public" and args.format == "sarif":
+            failure = {
+                "status": "failed",
+                "validation": "structural",
+                "authentication": "not_performed",
+                **exc.to_dict(),
+            }
+            sys.stderr.write(render_report(failure, "sarif"))
+            return 2
         sys.stderr.write(json.dumps(exc.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
         return 2
     sys.stdout.write(render_report(report, args.format))

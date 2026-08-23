@@ -27,7 +27,7 @@ SplitSeal requires Python 3.11 or newer. The project is not published to a packa
 registry. Install a tagged source release from GitHub:
 
 ```console
-python -m pip install "splitseal @ git+https://github.com/tovellan/splitseal.git@v0.1.0"
+python -m pip install "splitseal @ git+https://github.com/tovellan/splitseal.git@v0.2.0"
 ```
 
 For Parquet input, add the optional dependency after cloning:
@@ -83,6 +83,17 @@ splitseal verify \
   --attestation artifacts/synthetic-eval-1.0.0.attestation.json \
   --config splitseal.toml
 ```
+
+Validate only the public attestation's structure, canonical encoding, and redaction
+constraints without a seal or key:
+
+```console
+splitseal validate-public \
+  --attestation artifacts/synthetic-eval-1.0.0.attestation.json
+```
+
+This command reports `authentication` as `not_performed`. Structural validity is not
+proof of authenticity, dataset origin, or possession of the private manifest.
 
 All commands emit JSON. Pass `--format sarif` to produce SARIF 2.1.0 for CI systems.
 Expected failures are JSON objects on standard error with stable `SS` error codes.
