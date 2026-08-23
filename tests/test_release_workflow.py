@@ -68,6 +68,10 @@ def test_release_preflight_precedes_verified_checkout() -> None:
     assert settings.get("persist-credentials") is False
     assert settings.get("ref") == "${{ steps.verify-tag.outputs.target_sha }}"
 
+    uv_settings = _step("Install uv").get("with")
+    assert isinstance(uv_settings, Mapping)
+    assert uv_settings.get("version") == "0.12.5"
+
 
 def test_release_publication_is_draft_first_and_resumable() -> None:
     create = _step("Create or resume draft release")

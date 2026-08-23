@@ -38,6 +38,9 @@ verified commit SHA. A partial draft rerun
 accepts a tag that remains in protected `main` history, verifies existing asset bytes, and
 resumes missing uploads without overwriting conflicts. A published-release rerun performs
 a protected-tag rebuild and requires exact remote names, SHA-256 digests, and bytes without
-uploading or republishing. Active repository rules block updates and deletions of `v*` tags
-without bypass actors. The workflow must itself run from that exact protected tag revision,
-and the repository's server-side Actions policy requires immutable action SHA pins.
+uploading or republishing. The build tool is version-pinned, but the hosted runner and
+Python minor runtime are not hermetic. A later byte mismatch therefore fails closed as an
+integrity error; this check is not a guarantee of indefinite byte-for-byte reproducibility.
+Active repository rules block updates and deletions of `v*` tags without bypass actors.
+The workflow must itself run from that exact protected tag revision, and the repository's
+server-side Actions policy requires immutable action SHA pins.
