@@ -13,6 +13,9 @@ project uses Semantic Versioning.
   `main`, then build from the verified commit SHA.
 - Require the release ref to begin with an annotated or signed tag object rather than a
   lightweight tag.
+- Require repository release immutability and generic tagger metadata before publication.
+- Make release-attestation verification retryable without attempting to recreate an
+  already published release.
 
 ## [0.2.3] - 2026-08-24
 

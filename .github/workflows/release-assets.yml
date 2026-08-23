@@ -33,6 +33,11 @@ jobs:
             echo "release tag must be an exact v-prefixed semantic version" >&2
             exit 1
           fi
+          immutability_enabled="$(gh api "repos/$GITHUB_REPOSITORY/immutable-releases" --jq '.enabled')"
+          if [ "$immutability_enabled" != "true" ]; then
+            echo "repository release immutability must be enabled before publication" >&2
+            exit 1
+          fi
           object_type="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.type')"
           object_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
           if [ "$object_type" != "tag" ]; then
@@ -48,6 +53,12 @@ jobs:
               exit 1
             fi
             tag_object="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$object_sha")"
+            tagger_name="$(jq -r '.tagger.name // ""' <<<"$tag_object")"
+            tagger_email="$(jq -r '.tagger.email // ""' <<<"$tag_object")"
+            if [ "$tagger_name" != "Tovellan Maintainers" ] || [ "$tagger_email" != "noreply@github.com" ]; then
+              echo "release tag must use the generic maintainer identity" >&2
+              exit 1
+            fi
             object_type="$(jq -r '.object.type' <<<"$tag_object")"
             object_sha="$(jq -r '.object.sha' <<<"$tag_object")"
           done
@@ -61,6 +72,11 @@ jobs:
             exit 1
           fi
           printf 'target_sha=%s\n' "$object_sha" >> "$GITHUB_OUTPUT"
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            printf 'release_exists=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'release_exists=false\n' >> "$GITHUB_OUTPUT"
+          fi
       - name: Check out release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -84,6 +100,7 @@ jobs:
       - name: Build distributions
         run: uv build
       - name: Create release with attached distributions
+        if: steps.verify-tag.outputs.release_exists != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
@@ -93,18 +110,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          state="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.immutable')"
-          if [ "$state" != "true" ]; then
-            echo "GitHub release is not immutable" >&2
-            exit 1
-          fi
-          for attempt in 1 2 3 4 5; do
-            if gh release verify "$RELEASE_TAG" --format json >/dev/null; then
+          for attempt in {1..40}; do
+            state="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.immutable')"
+            if [ "$state" = "true" ] && gh release verify "$RELEASE_TAG" --format json >/dev/null; then
               printf 'GitHub release immutable: true\n'
               printf 'GitHub automatic release attestation: verified\n'
               exit 0
             fi
-            sleep 3
+            sleep 15
           done
           echo "GitHub automatic release attestation verification failed" >&2
           exit 1
