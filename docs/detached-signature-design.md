@@ -14,6 +14,11 @@ source path. Verification establishes that a non-revoked trusted signing key sig
 public bytes. It does not establish dataset quality, timestamping, transparency, or
 control of the private manifest.
 
+Trust is relative to the caller-selected trust store. Its provenance and integrity are
+an out-of-band caller responsibility. An attacker who can replace that store can trust a
+new key and defeat signature authentication. A key identifier identifies only public-key
+bytes, not a publisher or legal identity.
+
 ## Key identity
 
 Version 1 uses Ed25519. A key identifier is derived, never chosen:
@@ -28,11 +33,13 @@ Private key bytes never appear in a signature or trust store.
 
 ## Rotation and revocation
 
-Trust is an explicit local canonical-JSON document with schema
-`splitseal.trust-store.v1`. It contains an exact `schema_version` field and a `keys` array.
-Each key entry contains exactly `algorithm`, `key_id`, `public_key`, and `status`.
-`public_key` is unpadded base64url; `status` is `active` or `revoked`. Entries are unique
-and sorted by `key_id`.
+Trust is an explicit local RFC 8785 canonical-JSON document with one trailing LF. It
+contains exactly `schema_version` and `keys`; `schema_version` is
+`splitseal.trust-store.v1`, and `keys` is an array. Each key entry contains exactly
+`algorithm`, `key_id`, `public_key`, and `status`. `public_key` is unpadded base64url;
+`status` is `active` or `revoked`. Entries are unique and sorted by `key_id`. Unknown or
+duplicate fields, duplicate key identifiers, unsorted entries, noncanonical encoding,
+unsupported schemas, malformed keys, and key-identifier mismatches fail closed.
 
 Rotation adds the successor as active before publishers begin using it. The predecessor
 may remain active so historical signatures continue to verify. Revocation changes its
@@ -48,7 +55,8 @@ exactly these fields:
 - `schema_version`: `splitseal.detached-signature.v1`;
 - `algorithm`: `ed25519`;
 - `key_id`: the derived key identifier;
-- `attestation_sha256`: SHA-256 of the canonical attestation bytes;
+- `attestation_sha256`: a 64-character lowercase hexadecimal JSON string encoding the
+  SHA-256 digest of the canonical attestation bytes;
 - `signature`: the 64 Ed25519 signature bytes as unpadded base64url.
 
 The attestation bytes are RFC 8785 canonical JSON without the artifact's trailing LF.
@@ -79,5 +87,8 @@ unchanged and can be signed. Existing seals and symmetric-key verification are u
 
 Implementation is blocked until deterministic public vectors cover active-key success,
 rotation with two active keys, revocation failure, wrong-key failure, malformed base64url,
-noncanonical and unknown-field envelopes, modified attestations, and confirmation that
-neither the envelope nor reports introduce membership-sensitive fields.
+noncanonical and unknown-field envelopes, `attestation_sha256` values with the wrong JSON
+type, length, case, or encoding, digest mismatches, unknown or duplicate trust-store
+fields, duplicate or unsorted key entries, malformed public keys, trust-store key-identifier
+mismatches, modified attestations, and confirmation that neither the envelope nor reports
+introduce membership-sensitive fields.
