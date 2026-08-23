@@ -28,8 +28,20 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: python scripts/release_assets.py --tag "$RELEASE_TAG" --output-dir dist
-      - name: Attach immutable distributions and checksums to the GitHub release
+      - name: Attach distributions and checksums to the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: gh release upload "$RELEASE_TAG" dist/*
+      - name: Record GitHub release immutability state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          state="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.immutable')"
+          case "$state" in
+            true|false) ;;
+            *) echo "GitHub release immutable field is missing or invalid" >&2; exit 1 ;;
+          esac
+          printf 'GitHub release immutable: %s\n' "$state"
+          printf 'GitHub release immutable: `%s`\n' "$state" >> "$GITHUB_STEP_SUMMARY"
