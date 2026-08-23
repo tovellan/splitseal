@@ -20,3 +20,7 @@ the result.
 Pull requests should explain the problem, compatibility effect, security effect, and
 validation performed. By contributing, you agree that your contribution is licensed
 under Apache License 2.0.
+
+Public commits and merge commits must use the generic organization identity
+`Tovellan Maintainers <noreply@github.com>`. Do not publish personal names or email
+addresses in commit metadata, and do not add authorship or generator-attribution trailers.
