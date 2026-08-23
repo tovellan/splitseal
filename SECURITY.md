@@ -23,14 +23,22 @@ and unsafe plugin behavior. The documented trust boundaries in
 
 The release workflow requires the Git tag to match the package version exactly. It builds
 into an empty directory and publishes a sorted `SHA256SUMS` alongside the wheel and source
-archive. It uses `gh release create` to attach every asset while the release is still a
-draft before publication. Checksums establish download integrity against the GitHub
-release; they are not a publisher signature or an independent transparency log. Closure
-requires the GitHub Releases API to report `immutable: true` and GitHub's automatic
-release attestation to verify. Release v0.2.3 predates repository release immutability
-and cannot be made immutable retroactively.
+archive. It attaches every asset to a draft before publication. Checksums establish
+download integrity against the GitHub release; they are not a publisher signature or an
+independent transparency log. Closure requires the GitHub Releases API to report
+`immutable: true` and GitHub's automatic release attestation to verify. The GitHub Releases
+API reports `immutable: false` for release v0.2.3.
 
 Before checkout, the workflow requires an annotated or signed version-tag object, resolves
-it through the GitHub API, and requires the target commit to equal the current protected
-`main` commit. It checks out that verified commit SHA. Active repository rules block
-updates and deletions of `v*` tags without bypass actors.
+it through the GitHub API, and requires a new release target to equal the current protected
+`main` commit. Every tag object must use the generic maintainer name and email documented
+in the release process plus its exact public annotation. Generated release notes pass a
+public-metadata check before draft creation. The workflow also requires repository release
+immutability before checkout and again immediately before publication, then checks out the
+verified commit SHA. A partial draft rerun
+accepts a tag that remains in protected `main` history, verifies existing asset bytes, and
+resumes missing uploads without overwriting conflicts. A published-release rerun performs
+a protected-tag rebuild and requires exact remote names, SHA-256 digests, and bytes without
+uploading or republishing. Active repository rules block updates and deletions of `v*` tags
+without bypass actors. The workflow must itself run from that exact protected tag revision,
+and the repository's server-side Actions policy requires immutable action SHA pins.

@@ -10,8 +10,6 @@ project uses Semantic Versioning.
 - Require an exact release-tag and package-version match before building release assets.
 - Publish a sorted `SHA256SUMS` file with the wheel and source archive, and refuse stale
   output directories or release-asset overwrites.
-- Record the GitHub Releases API `immutable` value after asset upload without treating
-  checksum publication as an immutability guarantee.
 - Scope checksum instructions to releases produced after the new workflow takes effect.
 
 ### Fixed
@@ -22,6 +20,17 @@ project uses Semantic Versioning.
   `main`, then build from the verified commit SHA.
 - Require the release ref to begin with an annotated or signed tag object rather than a
   lightweight tag.
+- Require repository release immutability and generic tagger metadata before publication.
+- Make release-attestation verification retryable without attempting to recreate an
+  already published release.
+- Resume partial draft uploads without overwriting conflicting assets, and allow
+  verification-only reruns after protected `main` advances.
+- Bind manual release dispatches to the exact protected version-tag revision and require
+  server-side immutable action SHA pins.
+- Recheck release immutability immediately before publication and validate tag annotations
+  plus generated release notes as public metadata.
+- Require exact draft and published remote asset names, SHA-256 digests, and bytes against
+  a protected-tag rebuild.
 
 ## [0.2.3] - 2026-08-24
 
