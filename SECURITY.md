@@ -24,4 +24,9 @@ and unsafe plugin behavior. The documented trust boundaries in
 The release workflow requires the Git tag to match the package version exactly. It builds
 into an empty directory and publishes a sorted `SHA256SUMS` alongside the wheel and source
 archive. Asset upload refuses overwrites. Checksums establish download integrity against
-the GitHub release; they are not a publisher signature or an independent transparency log.
+the GitHub release.
+
+GitHub records Sigstore-signed build-provenance attestations for the checksummed wheel and
+source archive. The attestation binds artifact digests to the public repository's release
+workflow identity. It does not replace source review, establish dataset quality, or act as
+an independent transparency log.

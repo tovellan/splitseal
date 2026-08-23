@@ -37,6 +37,13 @@ three files and verify the distributions before installation:
 shasum -a 256 -c SHA256SUMS
 ```
 
+GitHub also records signed build provenance for both distributions. Verify a downloaded
+file against this public repository:
+
+```console
+gh attestation verify splitseal-0.2.3-py3-none-any.whl --repo tovellan/splitseal
+```
+
 For Parquet input, add the optional dependency after cloning:
 
 ```console

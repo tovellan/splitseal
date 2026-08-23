@@ -12,7 +12,10 @@ jobs:
     name: Build and attach Python distributions
     runs-on: ubuntu-latest
     permissions:
+      artifact-metadata: write
+      attestations: write
       contents: write
+      id-token: write
     steps:
       - name: Check out release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,6 +31,10 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: python scripts/release_assets.py --tag "$RELEASE_TAG" --output-dir dist
+      - name: Attest wheel and source archive provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-checksums: dist/SHA256SUMS
       - name: Attach immutable distributions and checksums to the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

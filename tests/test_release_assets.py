@@ -70,3 +70,18 @@ def test_release_build_refuses_nonempty_output_before_invoking_builder(tmp_path:
     with pytest.raises(ValueError, match="output directory must be empty"):
         build_release_assets(root=root, tag=f"v{version}", output_dir=output)
     assert sentinel.read_bytes() == b"existing"
+
+
+def test_release_workflow_pins_attestation_and_required_permissions() -> None:
+    root = Path(__file__).resolve().parents[1]
+    workflow = (root / ".github" / "workflows" / "release-assets.yml").read_text(encoding="utf-8")
+    assert "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d" in workflow
+    assert "subject-checksums: dist/SHA256SUMS" in workflow
+    for permission in (
+        "artifact-metadata: write",
+        "attestations: write",
+        "contents: write",
+        "id-token: write",
+    ):
+        assert permission in workflow
+    assert "--clobber" not in workflow
