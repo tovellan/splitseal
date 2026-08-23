@@ -147,12 +147,16 @@ jobs:
             gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
               -f tag_name="$RELEASE_TAG" -f target_commitish="$TARGET_SHA" \
               > "$RUNNER_TEMP/generated-release-notes.json"
-            jq --arg name "SplitSeal $RELEASE_TAG" \
-              '{name: $name, body: .body}' "$RUNNER_TEMP/generated-release-notes.json" \
-              > "$RUNNER_TEMP/release-notes.json"
+            python scripts/validate_release_metadata.py \
+              --tag "$RELEASE_TAG" \
+              --input "$RUNNER_TEMP/generated-release-notes.json" \
+              --output "$RUNNER_TEMP/release-notes.json" \
+              --sanitize-generated
           fi
-          python scripts/validate_release_metadata.py \
-            --tag "$RELEASE_TAG" --input "$RUNNER_TEMP/release-notes.json"
+          if [ "$RELEASE_STATE" = "published" ]; then
+            python scripts/validate_release_metadata.py \
+              --tag "$RELEASE_TAG" --input "$RUNNER_TEMP/release-notes.json"
+          fi
       - name: Create or resume draft release
         id: release
         if: steps.verify-tag.outputs.release_state != 'published'

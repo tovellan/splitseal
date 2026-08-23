@@ -30,8 +30,9 @@ GitHub's automatic release attestation to verify. The GitHub Releases API report
 Before checkout, the workflow requires an annotated or signed version-tag object, resolves
 it through the GitHub API, and requires a new release target to equal the current protected
 `main` commit. Every tag object must use the generic maintainer name and email documented
-in the release process plus its exact public annotation. Generated release notes pass a
-public-metadata check before draft creation. The workflow also requires repository release
+in the release process plus its exact public annotation. Generated release notes remove
+contributor credits and pass the complete public-text policy before draft creation. The
+workflow does not print removed account metadata. It also requires repository release
 immutability before checkout and again immediately before publication, then checks out the
 verified commit SHA. A partial draft rerun
 accepts a tag that remains in protected `main` history, verifies existing asset bytes, and

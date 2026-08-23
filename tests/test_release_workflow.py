@@ -89,8 +89,9 @@ def test_release_publication_is_draft_first_and_resumable() -> None:
     metadata_run = _run("Generate and validate public release notes")
     assert "/releases/generate-notes" in metadata_run
     assert "generated-release-notes.json" in metadata_run
-    assert "'{name: $name, body: .body}'" in metadata_run
     assert "scripts/validate_release_metadata.py" in metadata_run
+    assert '--output "$RUNNER_TEMP/release-notes.json"' in metadata_run
+    assert "--sanitize-generated" in metadata_run
 
     build_run = _run("Build distributions")
     assert "uv build" in build_run

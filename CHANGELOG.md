@@ -25,6 +25,9 @@ project uses Semantic Versioning.
 - Require exact draft and published remote asset names, SHA-256 digests, and bytes against
   a protected-tag rebuild.
 - Remove the build tool's hidden output helper before exact release-asset validation.
+- Remove generated contributor credits and reject every private-workflow, local-path,
+  attribution, personal-account, positioning, and prohibited-punctuation class before
+  release-note publication.
 
 ## [0.2.3] - 2026-08-24
 
