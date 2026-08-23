@@ -69,6 +69,16 @@ def test_sequence_digest_rejects_malformed_digest(digest: str) -> None:
     assert caught.value.code == "SS012"
 
 
+@pytest.mark.parametrize(
+    "digests",
+    [None, "00" * 32, b"00", [None], [1]],
+)
+def test_sequence_digest_rejects_wrong_runtime_types(digests: object) -> None:
+    with pytest.raises(SplitSealError) as caught:
+        sequence_digest(digests)  # type: ignore[arg-type]
+    assert caught.value.code == "SS012"
+
+
 def test_dataset_digest_sorts_split_names_but_includes_counts() -> None:
     root = record_digest({"id": "one"})
     left = dataset_digest({"b": (1, root), "a": (1, root)})
@@ -84,6 +94,25 @@ def test_dataset_digest_rejects_invalid_inputs() -> None:
         dataset_digest({"a": (1, "invalid")})
     with pytest.raises(SplitSealError):
         dataset_digest({"a": (1, "00")})
+
+
+@pytest.mark.parametrize(
+    "splits",
+    [
+        None,
+        {1: (1, "00" * 32)},
+        {"a": [1, "00" * 32]},
+        {"a": ("1", "00" * 32)},
+        {"a": (True, "00" * 32)},
+        {"a": (2**64, "00" * 32)},
+        {"a": (1, None)},
+        {"\ud800": (1, "00" * 32)},
+    ],
+)
+def test_dataset_digest_rejects_wrong_runtime_types(splits: object) -> None:
+    with pytest.raises(SplitSealError) as caught:
+        dataset_digest(splits)  # type: ignore[arg-type]
+    assert caught.value.code == "SS012"
 
 
 def test_ensure_record_rejects_non_object() -> None:

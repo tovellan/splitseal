@@ -16,6 +16,11 @@ digest = record_digest(record)
 It rejects non-string object keys, non-finite floats, unsupported objects, and integers
 outside the exactly interoperable range.
 
+`dataset_digest` accepts string split names paired with a non-negative 64-bit record
+count and a lowercase or uppercase hexadecimal SHA-256 digest. `sequence_digest` accepts
+a sequence of hexadecimal SHA-256 record digests. Invalid runtime types, encodings,
+lengths, and count ranges fail with `SS012`.
+
 ## Release operations
 
 ```python

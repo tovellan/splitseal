@@ -19,6 +19,8 @@ _RECORD_DOMAIN = b"splitseal-record-v1\x00"
 _SEQUENCE_DOMAIN = b"splitseal-sequence-v1\x00"
 _DATASET_DOMAIN = b"splitseal-dataset-v1\x00"
 _MAX_INTEROPERABLE_INTEGER = 9_007_199_254_740_991
+_MAX_RECORD_COUNT = 2**64 - 1
+_SPLIT_DIGEST_ENTRY_SIZE = 2
 
 
 def _validate_json(value: object, location: str = "$") -> None:
@@ -73,8 +75,14 @@ def record_digest(record: Record) -> str:
 def sequence_digest(record_digests: Sequence[str]) -> str:
     """Hash an ordered sequence of hexadecimal record digests."""
 
+    if isinstance(record_digests, (str, bytes, bytearray)) or not isinstance(
+        record_digests, Sequence
+    ):
+        raise fail("SS012", "record digests must be a sequence of strings")
     digest = hashlib.sha256(_SEQUENCE_DOMAIN)
     for item in record_digests:
+        if not isinstance(item, str):
+            raise fail("SS012", "record digest must be a string")
         try:
             raw = bytes.fromhex(item)
         except ValueError as exc:
@@ -88,18 +96,37 @@ def sequence_digest(record_digests: Sequence[str]) -> str:
 def dataset_digest(splits: Mapping[str, tuple[int, str]]) -> str:
     """Hash named split roots and counts in split-name order."""
 
+    if not isinstance(splits, Mapping):
+        raise fail("SS012", "dataset splits must be a mapping")
+    validated: list[tuple[str, int, str]] = []
+    for name, value in splits.items():
+        if not isinstance(name, str):
+            raise fail("SS012", "split names must be strings")
+        if not isinstance(value, tuple) or len(value) != _SPLIT_DIGEST_ENTRY_SIZE:
+            raise fail("SS012", "split digest entry must be a count and digest pair", split=name)
+        count, split_digest = value
+        if type(count) is not int or count < 0 or count > _MAX_RECORD_COUNT:
+            raise fail(
+                "SS012",
+                "record count must be an unsigned 64-bit integer",
+                split=name,
+            )
+        if not isinstance(split_digest, str):
+            raise fail("SS012", "split digest must be a string", split=name)
+        validated.append((name, count, split_digest))
+
     digest = hashlib.sha256(_DATASET_DOMAIN)
-    for name in sorted(splits):
-        count, split_digest = splits[name]
-        if count < 0:
-            raise fail("SS012", "record count cannot be negative", split=name)
+    for name, count, split_digest in sorted(validated, key=lambda item: item[0]):
         try:
             raw_digest = bytes.fromhex(split_digest)
         except ValueError as exc:
             raise fail("SS012", "split digest is not hexadecimal", split=name) from exc
         if len(raw_digest) != hashlib.sha256().digest_size:
             raise fail("SS012", "split digest has an invalid length", split=name)
-        encoded_name = name.encode("utf-8")
+        try:
+            encoded_name = name.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise fail("SS012", "split name is not valid UTF-8") from exc
         digest.update(_framed(encoded_name))
         digest.update(count.to_bytes(8, "big"))
         digest.update(_framed(raw_digest))
