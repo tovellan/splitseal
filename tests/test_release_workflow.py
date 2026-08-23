@@ -161,9 +161,7 @@ def test_distribution_provenance_precedes_irreversible_publication() -> None:
 
     attest = _step("Attest wheel and source archive provenance")
     assert attest.get("if") == "steps.verify-tag.outputs.release_state != 'published'"
-    assert attest.get("uses") == (
-        "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d"
-    )
+    assert attest.get("uses") == ("actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d")
     settings = attest.get("with")
     assert isinstance(settings, Mapping)
     assert settings.get("subject-checksums") == "dist/SHA256SUMS"
@@ -185,9 +183,7 @@ def test_distribution_provenance_precedes_irreversible_publication() -> None:
     assert _step_index("Attest wheel and source archive provenance") < _step_index(
         "Attach exact draft assets"
     )
-    assert _step_index("Attach exact draft assets") < _step_index(
-        "Verify distribution provenance"
-    )
+    assert _step_index("Attach exact draft assets") < _step_index("Verify distribution provenance")
     assert _step_index("Verify distribution provenance") < _step_index(
         "Publish complete draft release"
     )
