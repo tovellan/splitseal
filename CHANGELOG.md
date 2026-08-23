@@ -3,6 +3,16 @@
 All notable changes are recorded here. The format follows Keep a Changelog and the
 project uses Semantic Versioning.
 
+## [0.3.0] - 2026-08-24
+
+### Added
+
+- Generate local Ed25519 signing keys and canonical public trust stores.
+- Sign structurally valid public attestations with versioned detached envelopes.
+- Verify signatures against active keys and fail closed on unknown or revoked keys.
+- Cover rotation, all-history revocation, 0.1 compatibility, malformed artifacts,
+  cryptographic tampering, redaction invariants, and CLI reporting.
+
 ## [0.2.3] - 2026-08-24
 
 ### Added
@@ -58,6 +68,7 @@ project uses Semantic Versioning.
 - JSON and SARIF 2.1.0 reports.
 - Repository-root containment, Unicode normalization, and symlink checks.
 
+[0.3.0]: https://github.com/tovellan/splitseal/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/tovellan/splitseal/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/tovellan/splitseal/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/tovellan/splitseal/compare/v0.2.0...v0.2.1

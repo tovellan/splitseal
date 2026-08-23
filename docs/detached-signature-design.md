@@ -1,6 +1,6 @@
 # Detached signature design
 
-Status: accepted for implementation. No signing command exists in the 0.2 release line.
+Status: implemented in the 0.3 release line.
 
 This contract defines the trust boundary required by issue 9 before a wire format is
 implemented. Detached signatures will remain optional, local-first, and independent of
@@ -73,9 +73,9 @@ mismatch fail closed.
 
 ## Command behavior
 
-The future signing command must structurally validate the public attestation before
-signing and write its detached envelope atomically. The future verification command must
-accept only an attestation, detached signature, and trust store. It must distinguish
+The signing command structurally validates the public attestation before signing and
+writes its detached envelope atomically. The verification command accepts only an
+attestation, detached signature, and trust store. It distinguishes
 `structural_validation`, `signature_authentication`, and `key_status` in JSON and SARIF.
 Malformed keys or envelopes, unknown keys, revoked keys, digest mismatches, and invalid
 signatures require stable machine-readable errors.
@@ -83,10 +83,10 @@ signatures require stable machine-readable errors.
 Existing `splitseal.public-attestation.v1` files, including those produced by 0.1, remain
 unchanged and can be signed. Existing seals and symmetric-key verification are unaffected.
 
-## Required test vectors
+## Test-vector coverage
 
-Implementation is blocked until deterministic public vectors cover active-key success,
-rotation with two active keys, revocation failure, wrong-key failure, malformed base64url,
+The deterministic public vectors cover active-key success, rotation with two active keys,
+revocation failure, wrong-key failure, malformed base64url,
 noncanonical and unknown-field envelopes, `attestation_sha256` values with the wrong JSON
 type, length, case, or encoding, digest mismatches, unknown or duplicate trust-store
 fields, duplicate or unsorted key entries, malformed public keys, trust-store key-identifier

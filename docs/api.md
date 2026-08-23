@@ -1,6 +1,6 @@
 # Python API
 
-The stable 0.2 API is exported from `splitseal`.
+The stable 0.3 API is exported from `splitseal`.
 
 ## Canonicalization
 
@@ -48,6 +48,38 @@ validate_public_attestation(
 schema, RFC 8785 encoding, field types, aggregate consistency, and redaction constraints.
 It does not authenticate the commitment or establish provenance, and its report always
 marks keyed authentication as `not_performed`.
+
+## Detached signatures
+
+```python
+from splitseal import (
+    create_signing_material,
+    sign_public_attestation,
+    verify_public_signature,
+)
+
+create_signing_material(
+    root=Path.cwd(),
+    private_key_path=".splitseal/signing.pem",
+    trust_store_path="artifacts/signing-trust.json",
+)
+sign_public_attestation(
+    root=Path.cwd(),
+    attestation_path="artifacts/release.attestation.json",
+    private_key_path=".splitseal/signing.pem",
+    signature_path="artifacts/release.signature.json",
+)
+verify_public_signature(
+    root=Path.cwd(),
+    attestation_path="artifacts/release.attestation.json",
+    signature_path="artifacts/release.signature.json",
+    trust_store_path="artifacts/signing-trust.json",
+)
+```
+
+The verifier accepts no private seal or symmetric release key. Authentication is relative
+to the caller-selected trust store. `generate_signing_key` and `trust_store_bytes` support
+local rotation workflows that need to assemble multiple sorted active or revoked entries.
 
 Paths are always relative to `root`. Expected failures raise `SplitSealError` with stable
 `code`, `message`, and `details` fields. Details are intended for local diagnostics and

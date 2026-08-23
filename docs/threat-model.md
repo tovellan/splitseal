@@ -5,6 +5,7 @@
 - Private evaluation records and identifiers.
 - The association between a record and a split.
 - Release keys and encrypted private seals.
+- Optional signing private keys and verifier-selected trust stores.
 - Integrity of release metadata and source files.
 
 ## Trusted components
@@ -33,10 +34,13 @@ key and does not control the trusted host while a freeze runs.
 - Exact canonical duplicates across splits stop a release.
 - Private output files are created with owner-only permissions on platforms that support
   POSIX modes.
+- Optional Ed25519 signatures authenticate only canonical public-attestation bytes against
+  an explicit local trust store. Derived key identifiers do not assert publisher identity.
 
 ## Out of scope
 
 - A compromised host, Python interpreter, package dependency, or plugin.
+- Replacement or untrusted provenance of the caller-selected signature trust store.
 - Disclosure through source file names chosen by a caller outside public artifacts.
 - Aggregate-count inference that is inherent in publishing counts.
 - Key recovery from weak user-supplied key material. `splitseal keygen` is recommended.

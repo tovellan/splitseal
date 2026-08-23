@@ -54,6 +54,25 @@ and it does not prove authenticity or provenance.
 
 ## Compatibility
 
-New optional report fields may appear within a 0.2 release. Artifact interpretation does
+New optional report fields may appear within a 0.3 release. Artifact interpretation does
 not change without a new schema identifier. Attestation validation fails closed on unknown
 fields as well as an unknown schema so disclosure constraints remain explicit.
+
+## Detached signature
+
+Schema: `splitseal.detached-signature.v1`
+
+The optional canonical JSON envelope contains the Ed25519 algorithm, derived public-key
+identifier, lowercase SHA-256 digest of the canonical public attestation, and unpadded
+base64url signature. It contains no private-manifest field and does not modify the signed
+attestation. See `docs/detached-signature-design.md` for the exact domain-separated signed
+message.
+
+## Signature trust store
+
+Schema: `splitseal.trust-store.v1`
+
+The caller-selected canonical JSON trust store contains sorted Ed25519 public-key entries
+with derived identifiers and `active` or `revoked` status. Replacement of the trust store
+is a trust-root compromise. Revocation applies to all signatures because the v1 format
+has no trusted time source.

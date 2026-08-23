@@ -6,11 +6,13 @@ The roadmap is ordered by dependency and user evidence, not by a promised date.
 
 - Public-attestation schema validation without an authenticity claim.
 
+## Delivered in 0.3
+
+- Optional local Ed25519 detached signatures with derived key identity, explicit trust
+  stores, rotation, all-history revocation, and public verification.
+
 ## Next candidates
 
-- Detached signatures for public attestations. The key identity, rotation, revocation,
-  and wire contract are accepted in `docs/detached-signature-design.md`; implementation
-  and test vectors remain pending.
 - Streaming manifest construction for datasets that do not use similarity plugins.
 - Additional independently maintained similarity plugin examples.
 

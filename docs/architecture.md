@@ -36,6 +36,11 @@ Verification decrypts and authenticates the seal, recreates the public attestati
 uses a constant-time HMAC comparison through the standard library. With `--config`, it
 also reloads current sources and requires byte-identical canonical private metadata.
 
+Optional detached signing validates the public attestation, signs domain-separated bytes
+with Ed25519, and writes a separate public envelope. Verification uses only the public
+attestation, detached envelope, and caller-selected local trust store. It does not touch
+the private seal or symmetric release key.
+
 Release diffing decrypts both seals, compares multisets of record digests within split
 boundaries, and reports only aggregate additions, removals, and split-count changes.
 

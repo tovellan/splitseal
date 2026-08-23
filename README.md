@@ -27,7 +27,7 @@ SplitSeal requires Python 3.11 or newer. The project is not published to a packa
 registry. Install a tagged source release from GitHub:
 
 ```console
-python -m pip install "splitseal @ git+https://github.com/tovellan/splitseal.git@v0.2.3"
+python -m pip install "splitseal @ git+https://github.com/tovellan/splitseal.git@v0.3.0"
 ```
 
 For Parquet input, add the optional dependency after cloning:
@@ -95,6 +95,27 @@ splitseal validate-public \
 This command reports `authentication` as `not_performed`. Structural validity is not
 proof of authenticity, dataset origin, or possession of the private manifest.
 
+Optionally create a local Ed25519 signing key and trust store, sign the public
+attestation, and authenticate it without the symmetric release key or private seal:
+
+```console
+splitseal signing-keygen \
+  --private-key .splitseal/signing.pem \
+  --trust-store artifacts/signing-trust.json
+splitseal sign-public \
+  --attestation artifacts/synthetic-eval-1.0.0.attestation.json \
+  --private-key .splitseal/signing.pem \
+  --signature artifacts/synthetic-eval-1.0.0.signature.json
+splitseal verify-signature \
+  --attestation artifacts/synthetic-eval-1.0.0.attestation.json \
+  --signature artifacts/synthetic-eval-1.0.0.signature.json \
+  --trust-store artifacts/signing-trust.json
+```
+
+Trust-store provenance is the verifier's responsibility. A replaced trust store can
+trust an attacker's key. Revoked keys fail every signature, including older signatures,
+because version 1 makes no trusted-time claim.
+
 All commands emit JSON. Pass `--format sarif` to produce SARIF 2.1.0 for CI systems.
 Expected failures are JSON objects on standard error with stable `SS` error codes.
 
@@ -128,8 +149,8 @@ you trust with the full dataset.
 ## Security and limitations
 
 SplitSeal does not hide aggregate counts or the public release name and version. It does
-not provide signatures, timestamping, remote transparency, authorization, backup, secure
-deletion, or protection after the private key or source host is compromised. A keyed
+not provide timestamping, remote transparency, authorization, backup, secure deletion,
+or protection after a private key, trust store, or source host is compromised. A keyed
 attestation can be verified only by a holder of the release key and private seal.
 
 Read [`docs/threat-model.md`](docs/threat-model.md) before adopting the tool. Report

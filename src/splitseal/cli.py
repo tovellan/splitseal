@@ -21,9 +21,14 @@ from splitseal.service import (
     validate_public_attestation,
     verify_release,
 )
+from splitseal.signatures import (
+    create_signing_material,
+    sign_public_attestation,
+    verify_public_signature,
+)
 
 
-def _parser() -> argparse.ArgumentParser:
+def _parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     parser = argparse.ArgumentParser(
         prog="splitseal",
         description=(
@@ -38,6 +43,20 @@ def _parser() -> argparse.ArgumentParser:
     keygen.add_argument("--output", required=True, help="relative key output path")
     keygen.add_argument("--force", action="store_true", help="replace an existing regular file")
     _format_argument(keygen)
+
+    signing_keygen = subcommands.add_parser(
+        "signing-keygen",
+        help="create an Ed25519 signing key and local trust store",
+    )
+    _root_argument(signing_keygen)
+    signing_keygen.add_argument("--private-key", required=True, help="relative private key path")
+    signing_keygen.add_argument("--trust-store", required=True, help="relative trust store path")
+    signing_keygen.add_argument(
+        "--force",
+        action="store_true",
+        help="replace both existing output files",
+    )
+    _format_argument(signing_keygen)
 
     freeze = subcommands.add_parser("freeze", help="freeze dataset sources into release artifacts")
     _root_argument(freeze)
@@ -74,6 +93,27 @@ def _parser() -> argparse.ArgumentParser:
         help="relative public attestation path",
     )
     _format_argument(validate_public)
+
+    sign_public = subcommands.add_parser(
+        "sign-public",
+        help="sign a structurally valid public attestation",
+    )
+    _root_argument(sign_public)
+    sign_public.add_argument("--attestation", required=True, help="relative attestation path")
+    sign_public.add_argument("--private-key", required=True, help="relative signing key path")
+    sign_public.add_argument("--signature", required=True, help="relative signature output path")
+    sign_public.add_argument("--force", action="store_true", help="replace existing output file")
+    _format_argument(sign_public)
+
+    verify_signature = subcommands.add_parser(
+        "verify-signature",
+        help="authenticate a public attestation against a local trust store",
+    )
+    _root_argument(verify_signature)
+    verify_signature.add_argument("--attestation", required=True, help="relative attestation path")
+    verify_signature.add_argument("--signature", required=True, help="relative signature path")
+    verify_signature.add_argument("--trust-store", required=True, help="relative trust store path")
+    _format_argument(verify_signature)
 
     diff = subcommands.add_parser("diff", help="compare two private release seals")
     _root_argument(diff)
@@ -128,11 +168,18 @@ def _write_secret(root: Path, user_path: str, *, force: bool) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def _execute(args: argparse.Namespace) -> dict[str, Any]:
+def _execute(args: argparse.Namespace) -> dict[str, Any]:  # noqa: PLR0911
     root = Path(args.root)
     if args.command == "keygen":
         _write_secret(root, args.output, force=args.force)
         return {"status": "created", "key_file": Path(args.output).name}
+    if args.command == "signing-keygen":
+        return create_signing_material(
+            root=root,
+            private_key_path=args.private_key,
+            trust_store_path=args.trust_store,
+            force=args.force,
+        )
     if args.command == "freeze":
         return freeze_release(
             root=root,
@@ -154,6 +201,21 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
         return validate_public_attestation(
             root=root,
             attestation_path=args.attestation,
+        )
+    if args.command == "sign-public":
+        return sign_public_attestation(
+            root=root,
+            attestation_path=args.attestation,
+            private_key_path=args.private_key,
+            signature_path=args.signature,
+            force=args.force,
+        )
+    if args.command == "verify-signature":
+        return verify_public_signature(
+            root=root,
+            attestation_path=args.attestation,
+            signature_path=args.signature,
+            trust_store_path=args.trust_store,
         )
     if args.command == "diff":
         return diff_releases(
