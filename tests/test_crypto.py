@@ -75,6 +75,27 @@ def test_noncanonical_plaintext_is_rejected_after_authentication(
         open_seal(seal, SECRET)
 
 
+@pytest.mark.parametrize("depth", [101, 2_000])
+def test_nested_decrypted_manifest_is_rejected_with_stable_error(
+    monkeypatch: pytest.MonkeyPatch,
+    depth: int,
+) -> None:
+    plaintext = b'{"value":' + b"[" * depth + b"0" + b"]" * depth + b"}"
+
+    class FakeAES:
+        def __init__(self, _key: bytes) -> None:
+            pass
+
+        def decrypt(self, _nonce: bytes, _ciphertext: bytes, _aad: bytes) -> bytes:
+            return plaintext
+
+    seal = json.loads(seal_manifest({"value": "synthetic"}, SECRET))
+    monkeypatch.setattr("splitseal.crypto.AESGCM", FakeAES)
+    with pytest.raises(SplitSealError) as caught:
+        open_seal(seal, SECRET)
+    assert caught.value.code == "SS040"
+
+
 def test_key_material_has_a_minimum_length() -> None:
     with pytest.raises(SplitSealError) as caught:
         validate_secret(b"short")

@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 from splitseal.canonical import JSONValue, canonicalize
-from splitseal.errors import fail
+from splitseal.errors import SplitSealError, fail
 
 SEAL_SCHEMA = "splitseal.seal.v1"
 _AAD = SEAL_SCHEMA.encode("ascii")
@@ -119,10 +119,14 @@ def open_seal(container: object, secret: bytes) -> dict[str, JSONValue]:
         raise fail("SS042", "sealed manifest authentication failed") from exc
     try:
         manifest = json.loads(plaintext)
-    except (UnicodeDecodeError, ValueError) as exc:
+    except (RecursionError, UnicodeDecodeError, ValueError) as exc:
         raise fail("SS040", "decrypted manifest is not valid JSON") from exc
     if not isinstance(manifest, dict):
         raise fail("SS040", "decrypted manifest must be an object")
-    if canonicalize(manifest) != plaintext:
+    try:
+        canonical = canonicalize(manifest)
+    except SplitSealError as exc:
+        raise fail("SS040", "decrypted manifest contains invalid JSON values") from exc
+    if canonical != plaintext:
         raise fail("SS040", "decrypted manifest is not canonically encoded")
     return manifest

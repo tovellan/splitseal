@@ -67,6 +67,21 @@ def test_canonicalization_rejects_excessive_nesting_with_stable_error() -> None:
     assert caught.value.code == "SS011"
     assert caught.value.details["maximum_depth"] == 100
 
+    empty_container: object = []
+    for _ in range(100):
+        empty_container = [empty_container]
+    with pytest.raises(SplitSealError) as empty_caught:
+        canonicalize(empty_container)  # type: ignore[arg-type]
+    assert empty_caught.value.code == "SS011"
+    assert empty_caught.value.details["maximum_depth"] == 100
+
+
+def test_canonicalization_accepts_exact_nesting_limit() -> None:
+    value: object = 0
+    for _ in range(100):
+        value = [value]
+    canonicalize(value)  # type: ignore[arg-type]
+
 
 def test_sequence_digest_is_order_sensitive() -> None:
     first = record_digest({"id": "one"})

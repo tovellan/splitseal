@@ -23,13 +23,6 @@ _MAX_NESTING_DEPTH = 100
 
 
 def _validate_json(value: object, location: str = "$", depth: int = 0) -> None:
-    if depth > _MAX_NESTING_DEPTH:
-        raise fail(
-            "SS011",
-            "structured value exceeds the maximum nesting depth",
-            location=location,
-            maximum_depth=_MAX_NESTING_DEPTH,
-        )
     if value is None or isinstance(value, (str, bool)):
         return
     if isinstance(value, int):
@@ -45,10 +38,24 @@ def _validate_json(value: object, location: str = "$", depth: int = 0) -> None:
             raise fail("SS011", "non-finite numbers are not canonical JSON", location=location)
         return
     if isinstance(value, list):
+        if depth >= _MAX_NESTING_DEPTH:
+            raise fail(
+                "SS011",
+                "structured value exceeds the maximum nesting depth",
+                location=location,
+                maximum_depth=_MAX_NESTING_DEPTH,
+            )
         for index, item in enumerate(value):
             _validate_json(item, f"{location}[{index}]", depth + 1)
         return
     if isinstance(value, Mapping):
+        if depth >= _MAX_NESTING_DEPTH:
+            raise fail(
+                "SS011",
+                "structured value exceeds the maximum nesting depth",
+                location=location,
+                maximum_depth=_MAX_NESTING_DEPTH,
+            )
         for key, item in value.items():
             if not isinstance(key, str):
                 raise fail("SS011", "JSON object keys must be strings", location=location)
