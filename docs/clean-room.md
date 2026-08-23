@@ -50,5 +50,6 @@ not a replacement for them.
 
 Runtime dependencies are RFC8785 under Apache-2.0 and cryptography under dual Apache-2.0
 or BSD-3-Clause terms. The optional PyArrow dependency is Apache-2.0.
+The PyYAML development dependency is MIT licensed and parses workflow policy tests.
 Development dependencies are not bundled in the wheel. The release gate records an
 installed dependency audit and wheel-content review.

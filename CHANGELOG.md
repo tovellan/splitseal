@@ -9,6 +9,8 @@ project uses Semantic Versioning.
 
 - Remove persisted checkout credentials from every workflow job, bound job runtimes, and
   cancel superseded per-ref validation runs without cancelling published-release jobs.
+- Parse both workflow filename extensions and validate workflow security policy from YAML
+  structure rather than formatting-dependent text patterns.
 
 ## [0.2.3] - 2026-08-24
 
