@@ -8,7 +8,9 @@ The roadmap is ordered by dependency and user evidence, not by a promised date.
 
 ## Next candidates
 
-- Detached signatures for public attestations, with an explicit key rotation model.
+- Detached signatures for public attestations. The key identity, rotation, revocation,
+  and wire contract are accepted in `docs/detached-signature-design.md`; implementation
+  and test vectors remain pending.
 - Streaming manifest construction for datasets that do not use similarity plugins.
 - Additional independently maintained similarity plugin examples.
 
