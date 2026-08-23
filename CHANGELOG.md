@@ -8,6 +8,7 @@ project uses Semantic Versioning.
 ### Fixed
 
 - Normalize invalid digest input types and count ranges to stable `SS012` errors.
+- Reject whitespace and every other non-exact spelling of 64-character SHA-256 hex.
 
 ## [0.2.3] - 2026-08-24
 

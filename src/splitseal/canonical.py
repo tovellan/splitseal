@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import re
 from collections.abc import Mapping, Sequence
 from typing import TypeAlias, cast
 
@@ -21,6 +22,7 @@ _DATASET_DOMAIN = b"splitseal-dataset-v1\x00"
 _MAX_INTEROPERABLE_INTEGER = 9_007_199_254_740_991
 _MAX_RECORD_COUNT = 2**64 - 1
 _SPLIT_DIGEST_ENTRY_SIZE = 2
+_SHA256_HEX = re.compile(r"[0-9A-Fa-f]{64}")
 
 
 def _validate_json(value: object, location: str = "$") -> None:
@@ -83,12 +85,9 @@ def sequence_digest(record_digests: Sequence[str]) -> str:
     for item in record_digests:
         if not isinstance(item, str):
             raise fail("SS012", "record digest must be a string")
-        try:
-            raw = bytes.fromhex(item)
-        except ValueError as exc:
-            raise fail("SS012", "record digest is not hexadecimal") from exc
-        if len(raw) != hashlib.sha256().digest_size:
-            raise fail("SS012", "record digest has an invalid length")
+        if not _SHA256_HEX.fullmatch(item):
+            raise fail("SS012", "record digest must contain exactly 64 hexadecimal characters")
+        raw = bytes.fromhex(item)
         digest.update(_framed(raw))
     return digest.hexdigest()
 
@@ -117,12 +116,13 @@ def dataset_digest(splits: Mapping[str, tuple[int, str]]) -> str:
 
     digest = hashlib.sha256(_DATASET_DOMAIN)
     for name, count, split_digest in sorted(validated, key=lambda item: item[0]):
-        try:
-            raw_digest = bytes.fromhex(split_digest)
-        except ValueError as exc:
-            raise fail("SS012", "split digest is not hexadecimal", split=name) from exc
-        if len(raw_digest) != hashlib.sha256().digest_size:
-            raise fail("SS012", "split digest has an invalid length", split=name)
+        if not _SHA256_HEX.fullmatch(split_digest):
+            raise fail(
+                "SS012",
+                "split digest must contain exactly 64 hexadecimal characters",
+                split=name,
+            )
+        raw_digest = bytes.fromhex(split_digest)
         try:
             encoded_name = name.encode("utf-8")
         except UnicodeEncodeError as exc:

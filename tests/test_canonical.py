@@ -79,6 +79,24 @@ def test_sequence_digest_rejects_wrong_runtime_types(digests: object) -> None:
     assert caught.value.code == "SS012"
 
 
+@pytest.mark.parametrize(
+    "digest",
+    [
+        "00 " * 32,
+        "00" * 16 + "\n" + "00" * 16,
+        "00" * 16 + "\t" + "00" * 16,
+    ],
+)
+def test_digest_functions_reject_ascii_whitespace(digest: str) -> None:
+    with pytest.raises(SplitSealError) as sequence_error:
+        sequence_digest([digest])
+    assert sequence_error.value.code == "SS012"
+
+    with pytest.raises(SplitSealError) as dataset_error:
+        dataset_digest({"split": (1, digest)})
+    assert dataset_error.value.code == "SS012"
+
+
 def test_dataset_digest_sorts_split_names_but_includes_counts() -> None:
     root = record_digest({"id": "one"})
     left = dataset_digest({"b": (1, root), "a": (1, root)})
