@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from typing import TypeAlias, cast
 
 import rfc8785
@@ -74,13 +74,13 @@ def record_digest(record: Record) -> str:
     return hashlib.sha256(_RECORD_DOMAIN + _framed(payload)).hexdigest()
 
 
-def sequence_digest(record_digests: Sequence[str]) -> str:
+def sequence_digest(record_digests: Iterable[str]) -> str:
     """Hash an ordered sequence of hexadecimal record digests."""
 
     if isinstance(record_digests, (str, bytes, bytearray)) or not isinstance(
-        record_digests, Sequence
+        record_digests, Iterable
     ):
-        raise fail("SS012", "record digests must be a sequence of strings")
+        raise fail("SS012", "record digests must be an iterable of strings")
     digest = hashlib.sha256(_SEQUENCE_DOMAIN)
     for item in record_digests:
         if not isinstance(item, str):

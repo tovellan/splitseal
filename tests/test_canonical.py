@@ -62,6 +62,11 @@ def test_sequence_digest_is_order_sensitive() -> None:
     assert sequence_digest([first, second]) != sequence_digest([second, first])
 
 
+def test_sequence_digest_accepts_one_pass_iterables() -> None:
+    items = [record_digest({"id": "one"}), record_digest({"id": "two"})]
+    assert sequence_digest(item for item in items) == sequence_digest(items)
+
+
 @pytest.mark.parametrize("digest", ["not-hex", "ab"])
 def test_sequence_digest_rejects_malformed_digest(digest: str) -> None:
     with pytest.raises(SplitSealError) as caught:

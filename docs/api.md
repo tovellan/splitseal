@@ -18,8 +18,10 @@ outside the exactly interoperable range.
 
 `dataset_digest` accepts string split names paired with a non-negative 64-bit record
 count and exactly 64 lowercase or uppercase hexadecimal SHA-256 characters.
-`sequence_digest` applies the same exact grammar to each record digest. Whitespace is not
-accepted. Invalid runtime types, encodings, lengths, and count ranges fail with `SS012`.
+`sequence_digest` applies the same exact grammar to each record digest from a one-pass
+iterable. Text and byte containers are not treated as iterables of digests. Whitespace is
+not accepted. Invalid runtime types, encodings, lengths, and count ranges fail with
+`SS012`.
 
 ## Release operations
 
