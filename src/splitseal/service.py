@@ -79,10 +79,45 @@ def _build_manifest(
     for plugin_config in config.similarity:
         try:
             plugin = plugin_loader(plugin_config.plugin)
-            findings = list(plugin.analyze(split_records, plugin_config.settings))
-            plugin_version = str(plugin.version)
-        except SplitSealError:
-            raise
+        except SplitSealError as exc:
+            if plugin_loader is load_similarity_plugin and exc.code == "SS060":
+                raise
+            raise fail(
+                "SS061",
+                "similarity plugin loading failed",
+                plugin=plugin_config.plugin,
+            ) from exc
+        except Exception as exc:
+            raise fail(
+                "SS061",
+                "similarity plugin loading failed",
+                plugin=plugin_config.plugin,
+            ) from exc
+        try:
+            analyze = plugin.analyze
+            plugin_name = plugin.name
+            plugin_version = plugin.version
+        except Exception as exc:
+            raise fail(
+                "SS061",
+                "similarity plugin interface inspection failed",
+                plugin=plugin_config.plugin,
+            ) from exc
+        if (
+            not callable(analyze)
+            or not isinstance(plugin_name, str)
+            or not plugin_name
+            or plugin_name != plugin_config.plugin
+            or not isinstance(plugin_version, str)
+            or not plugin_version
+        ):
+            raise fail(
+                "SS061",
+                "similarity plugin does not implement the required interface",
+                plugin=plugin_config.plugin,
+            )
+        try:
+            findings = list(analyze(split_records, plugin_config.settings))
         except Exception as exc:
             raise fail(
                 "SS061",

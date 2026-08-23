@@ -45,10 +45,18 @@ def load_similarity_plugin(name: str) -> SimilarityPlugin:
     try:
         plugin = matches[0].load()()
         analyze = plugin.analyze
+        plugin_name = plugin.name
         version = plugin.version
     except Exception as exc:
         raise fail("SS060", "similarity plugin could not be loaded", plugin=name) from exc
-    if not callable(analyze) or not isinstance(version, str):
+    if (
+        not callable(analyze)
+        or not isinstance(plugin_name, str)
+        or not plugin_name
+        or plugin_name != name
+        or not isinstance(version, str)
+        or not version
+    ):
         raise fail(
             "SS060",
             "similarity plugin does not implement the required interface",
