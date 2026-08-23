@@ -124,8 +124,11 @@ def open_seal(container: object, secret: bytes) -> dict[str, JSONValue]:
         raise fail("SS040", "sealed manifest is missing cryptographic parameters")
     _require_fields(kdf, {"name", "n", "r", "p", "salt"}, "kdf")
     _require_fields(cipher, {"name", "nonce", "ciphertext"}, "cipher")
-    expected_kdf = {"name": "scrypt", "n": _KDF_N, "r": _KDF_R, "p": _KDF_P}
-    if any(kdf.get(key) != value for key, value in expected_kdf.items()):
+    expected_kdf_integers = {"n": _KDF_N, "r": _KDF_R, "p": _KDF_P}
+    if kdf.get("name") != "scrypt" or any(
+        type(kdf.get(key)) is not int or kdf.get(key) != value
+        for key, value in expected_kdf_integers.items()
+    ):
         raise fail("SS040", "sealed manifest uses unsupported KDF parameters")
     if cipher.get("name") != "aes-256-gcm":
         raise fail("SS040", "sealed manifest uses an unsupported cipher")

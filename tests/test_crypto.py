@@ -64,6 +64,25 @@ def test_malformed_seal_parameters_are_rejected(mutator: object) -> None:
 
 
 @pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("n", float(2**15)),
+        ("r", 8.0),
+        ("p", True),
+        ("p", 1.0),
+    ],
+)
+def test_seal_rejects_non_integer_kdf_parameters(field: str, value: object) -> None:
+    seal = json.loads(seal_manifest({"value": "synthetic"}, SECRET))
+    seal["kdf"][field] = value
+
+    with pytest.raises(SplitSealError) as caught:
+        open_seal(seal, SECRET)
+
+    assert caught.value.code == "SS040"
+
+
+@pytest.mark.parametrize(
     ("section", "field"),
     [
         ("kdf", "salt"),
