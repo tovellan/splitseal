@@ -12,8 +12,6 @@ project uses Semantic Versioning.
   output directories or release-asset overwrites.
 - Record Sigstore-signed GitHub build-provenance attestations for the checksummed wheel
   and source archive.
-- Record the GitHub Releases API `immutable` value after asset upload without treating
-  checksum publication as an immutability guarantee.
 - Scope checksum instructions to releases produced after the new workflow takes effect.
 - Scope provenance instructions to releases produced after attestation takes effect.
 
@@ -25,6 +23,17 @@ project uses Semantic Versioning.
   `main`, then build from the verified commit SHA.
 - Require the release ref to begin with an annotated or signed tag object rather than a
   lightweight tag.
+- Require repository release immutability and generic tagger metadata before publication.
+- Make release-attestation verification retryable without attempting to recreate an
+  already published release.
+- Resume partial draft uploads without overwriting conflicting assets, and allow
+  verification-only reruns after protected `main` advances.
+- Bind manual release dispatches to the exact protected version-tag revision and require
+  server-side immutable action SHA pins.
+- Recheck release immutability immediately before publication and validate tag annotations
+  plus generated release notes as public metadata.
+- Require exact draft and published remote asset names, SHA-256 digests, and bytes against
+  a protected-tag rebuild.
 
 ## [0.2.3] - 2026-08-24
 
