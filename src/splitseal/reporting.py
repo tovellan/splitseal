@@ -6,6 +6,8 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
+from splitseal import __version__
+
 
 def json_report(report: Mapping[str, Any]) -> str:
     return json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
@@ -31,7 +33,7 @@ def sarif_report(report: Mapping[str, Any]) -> str:
                 "tool": {
                     "driver": {
                         "name": "SplitSeal",
-                        "semanticVersion": "0.1.0",
+                        "semanticVersion": __version__,
                         "informationUri": "https://github.com/tovellan/splitseal",
                         "rules": [
                             {

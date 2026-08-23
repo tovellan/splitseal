@@ -12,7 +12,12 @@ import splitseal.service as service_module
 from splitseal.canonical import Record, canonicalize
 from splitseal.errors import SplitSealError
 from splitseal.plugins import SimilarityFinding
-from splitseal.service import diff_releases, freeze_release, verify_release
+from splitseal.service import (
+    diff_releases,
+    freeze_release,
+    validate_public_attestation,
+    verify_release,
+)
 
 from .conftest import OTHER_SECRET, SECRET, write_config, write_jsonl
 
@@ -81,6 +86,78 @@ def test_same_sources_and_key_produce_same_attestation_but_random_seal(project: 
     assert (project / "artifacts" / "first.sseal").read_bytes() != (
         project / "artifacts" / "second.sseal"
     ).read_bytes()
+
+
+def test_validate_public_attestation_is_structural_only(project: Path) -> None:
+    freeze(project)
+    report = validate_public_attestation(
+        root=project,
+        attestation_path="artifacts/release.attestation.json",
+    )
+    assert report == {
+        "status": "pass",
+        "validation": "structural",
+        "authentication": "not_performed",
+        "release": {"name": "synthetic-eval", "version": "1.0.0"},
+        "record_count": 4,
+        "split_count": 2,
+        "checks": {
+            "schema": "pass",
+            "canonical_encoding": "pass",
+            "redaction_constraints": "pass",
+            "keyed_authentication": "not_performed",
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    ("mutation", "code"),
+    [
+        (lambda value: value.update({"record_digests": ["private"]}), "SS046"),
+        (lambda value: value.pop("checks"), "SS045"),
+        (lambda value: value.update({"schema_version": "unknown"}), "SS045"),
+        (lambda value: value.update({"tool": []}), "SS045"),
+        (lambda value: value["tool"].update({"name": "other"}), "SS045"),
+        (lambda value: value["release"].update({"name": "has space"}), "SS045"),
+        (lambda value: value["aggregates"].update({"record_count": True}), "SS045"),
+        (lambda value: value["aggregates"].update({"split_counts": [3, 1]}), "SS045"),
+        (lambda value: value["aggregates"].update({"split_counts": [1, 2]}), "SS045"),
+        (lambda value: value["aggregates"].update({"split_count": 0}), "SS045"),
+        (lambda value: value["commitment"].update({"algorithm": "sha256"}), "SS045"),
+        (lambda value: value["commitment"].update({"value": "A" * 64}), "SS045"),
+        (
+            lambda value: value["checks"].update({"exact_cross_split_duplicates": "fail"}),
+            "SS045",
+        ),
+        (lambda value: value["checks"].update({"similarity": "unknown"}), "SS045"),
+    ],
+)
+def test_validate_public_attestation_rejects_unsafe_or_malformed_fields(
+    project: Path,
+    mutation: Any,
+    code: str,
+) -> None:
+    freeze(project)
+    path = project / "artifacts" / "release.attestation.json"
+    value = json.loads(path.read_bytes())
+    mutation(value)
+    path.write_bytes(canonicalize(value) + b"\n")
+    with pytest.raises(SplitSealError) as caught:
+        validate_public_attestation(
+            root=project, attestation_path="artifacts/release.attestation.json"
+        )
+    assert caught.value.code == code
+
+
+def test_validate_public_attestation_rejects_noncanonical_json(project: Path) -> None:
+    freeze(project)
+    path = project / "artifacts" / "release.attestation.json"
+    path.write_text(json.dumps(json.loads(path.read_bytes()), indent=2) + "\n", encoding="utf-8")
+    with pytest.raises(SplitSealError) as caught:
+        validate_public_attestation(
+            root=project, attestation_path="artifacts/release.attestation.json"
+        )
+    assert caught.value.code == "SS044"
 
 
 def test_duplicate_record_across_splits_blocks_outputs(project: Path) -> None:

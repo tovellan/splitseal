@@ -5,7 +5,9 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import re
 import tempfile
+import unicodedata
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -23,6 +25,8 @@ from splitseal.plugins import SimilarityPlugin, load_similarity_plugin
 
 PRIVATE_SCHEMA = "splitseal.private-manifest.v1"
 ATTESTATION_SCHEMA = "splitseal.public-attestation.v1"
+_PUBLIC_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 
 PluginLoader = Callable[[str], SimilarityPlugin]
 
@@ -335,6 +339,138 @@ def _load_json_file(path: Path, description: str) -> dict[str, Any]:
     return value
 
 
+def _require_public_fields(
+    value: Mapping[str, Any],
+    expected: set[str],
+    context: str,
+) -> None:
+    actual = set(value)
+    extra = sorted(actual - expected)
+    if extra:
+        raise fail(
+            "SS046",
+            "public attestation contains disclosure-unsafe or unknown fields",
+            context=context,
+            fields=extra,
+        )
+    missing = sorted(expected - actual)
+    if missing:
+        raise fail(
+            "SS045",
+            "public attestation is missing required fields",
+            context=context,
+            fields=missing,
+        )
+
+
+def _public_table(value: object, expected: set[str], context: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise fail("SS045", "public attestation field must be an object", field=context)
+    _require_public_fields(value, expected, context)
+    return value
+
+
+def _public_token(value: object, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not _PUBLIC_TOKEN.fullmatch(value)
+        or unicodedata.normalize("NFC", value) != value
+    ):
+        raise fail("SS045", "public attestation field has an invalid string value", field=field)
+    return value
+
+
+def _public_count(value: object, field: str) -> int:
+    if type(value) is not int or value < 0:
+        raise fail("SS045", "public attestation count must be a non-negative integer", field=field)
+    return value
+
+
+def validate_public_attestation(
+    *,
+    root: Path,
+    attestation_path: str | Path,
+) -> dict[str, Any]:
+    """Validate a public attestation without authenticating it or reading private inputs."""
+
+    attestation_file = safe_input_path(root, attestation_path)
+    attestation = _load_json_file(attestation_file, "public attestation")
+    _require_public_fields(
+        attestation,
+        {"schema_version", "tool", "release", "commitment", "aggregates", "checks"},
+        "attestation",
+    )
+    if attestation["schema_version"] != ATTESTATION_SCHEMA:
+        raise fail("SS045", "public attestation has an unsupported schema")
+
+    tool = _public_table(attestation["tool"], {"name", "version"}, "tool")
+    if tool["name"] != "splitseal":
+        raise fail("SS045", "public attestation tool.name must be splitseal")
+    _public_token(tool["version"], "tool.version")
+
+    release = _public_table(attestation["release"], {"name", "version"}, "release")
+    release_name = _public_token(release["name"], "release.name")
+    release_version = _public_token(release["version"], "release.version")
+
+    commitment_data = _public_table(
+        attestation["commitment"],
+        {"algorithm", "value"},
+        "commitment",
+    )
+    if commitment_data["algorithm"] != "hmac-sha256":
+        raise fail("SS045", "public attestation commitment algorithm must be hmac-sha256")
+    if not isinstance(commitment_data["value"], str) or not _SHA256_HEX.fullmatch(
+        commitment_data["value"]
+    ):
+        raise fail("SS045", "public attestation commitment must be lowercase SHA-256 hex")
+
+    aggregates = _public_table(
+        attestation["aggregates"],
+        {"record_count", "split_count", "split_counts"},
+        "aggregates",
+    )
+    record_count = _public_count(aggregates["record_count"], "aggregates.record_count")
+    split_count = _public_count(aggregates["split_count"], "aggregates.split_count")
+    split_counts_raw = aggregates["split_counts"]
+    if not isinstance(split_counts_raw, list):
+        raise fail("SS045", "public attestation aggregates.split_counts must be an array")
+    split_counts = [
+        _public_count(value, f"aggregates.split_counts[{index}]")
+        for index, value in enumerate(split_counts_raw)
+    ]
+    if split_count == 0 or len(split_counts) != split_count:
+        raise fail("SS045", "public attestation split counts do not match split_count")
+    if split_counts != sorted(split_counts):
+        raise fail("SS045", "public attestation split_counts must be sorted")
+    if sum(split_counts) != record_count:
+        raise fail("SS045", "public attestation split counts do not sum to record_count")
+
+    checks = _public_table(
+        attestation["checks"],
+        {"exact_cross_split_duplicates", "similarity"},
+        "checks",
+    )
+    if checks["exact_cross_split_duplicates"] != "pass":
+        raise fail("SS045", "public attestation exact duplicate check must be pass")
+    if checks["similarity"] not in {"pass", "not_run"}:
+        raise fail("SS045", "public attestation similarity check has an invalid status")
+
+    return {
+        "status": "pass",
+        "validation": "structural",
+        "authentication": "not_performed",
+        "release": {"name": release_name, "version": release_version},
+        "record_count": record_count,
+        "split_count": split_count,
+        "checks": {
+            "schema": "pass",
+            "canonical_encoding": "pass",
+            "redaction_constraints": "pass",
+            "keyed_authentication": "not_performed",
+        },
+    }
+
+
 def _open_private_manifest(seal_file: Path, secret: bytes) -> dict[str, JSONValue]:
     container = _load_json_file(seal_file, "sealed manifest")
     return open_seal(container, secret)
@@ -447,4 +583,9 @@ def diff_releases(
     }
 
 
-__all__ = ["diff_releases", "freeze_release", "verify_release"]
+__all__ = [
+    "diff_releases",
+    "freeze_release",
+    "validate_public_attestation",
+    "verify_release",
+]

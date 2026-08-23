@@ -21,7 +21,7 @@ outside the exactly interoperable range.
 ```python
 from pathlib import Path
 
-from splitseal import freeze_release, verify_release
+from splitseal import freeze_release, validate_public_attestation, verify_release
 
 secret = Path(".splitseal/release.key").read_bytes()
 freeze_release(
@@ -38,7 +38,16 @@ verify_release(
     config_path="splitseal.toml",
     secret=secret,
 )
+validate_public_attestation(
+    root=Path.cwd(),
+    attestation_path="artifacts/release.attestation.json",
+)
 ```
+
+`validate_public_attestation` accepts only a public attestation path. It validates the
+schema, RFC 8785 encoding, field types, aggregate consistency, and redaction constraints.
+It does not authenticate the commitment or establish provenance, and its report always
+marks keyed authentication as `not_performed`.
 
 Paths are always relative to `root`. Expected failures raise `SplitSealError` with stable
 `code`, `message`, and `details` fields. Details are intended for local diagnostics and

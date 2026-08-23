@@ -164,6 +164,54 @@ def test_cli_sarif_is_valid_shape(project: Path, capsys: pytest.CaptureFixture[s
     assert report["runs"][0]["results"] == []
 
 
+def test_cli_validate_public_json_and_sarif_failure(
+    project: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert (
+        main(
+            [
+                "freeze",
+                "--root",
+                str(project),
+                "splitseal.toml",
+                "--seal",
+                "artifacts/public.sseal",
+                "--attestation",
+                "artifacts/public.json",
+                "--key-file",
+                "keys/release.key",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    arguments = [
+        "validate-public",
+        "--root",
+        str(project),
+        "--attestation",
+        "artifacts/public.json",
+    ]
+    assert main(arguments) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["validation"] == "structural"
+    assert report["authentication"] == "not_performed"
+
+    path = project / "artifacts" / "public.json"
+    value = json.loads(path.read_bytes())
+    value["private_manifest"] = {"record_digests": []}
+    path.write_bytes(service_module.canonicalize(value) + b"\n")
+    assert main([*arguments, "--format", "sarif"]) == 2
+    captured = capsys.readouterr()
+    sarif = json.loads(captured.err)
+    result = sarif["runs"][0]["results"][0]
+    assert result["ruleId"] == "SPLITSEAL_RESULT"
+    embedded = result["properties"]["splitsealReport"]
+    assert embedded["authentication"] == "not_performed"
+    assert embedded["error"]["code"] == "SS046"
+
+
 def test_render_report_marks_changed_result() -> None:
     report = json.loads(render_report({"status": "changed"}, "sarif"))
     assert report["runs"][0]["results"][0]["ruleId"] == "SPLITSEAL_RESULT"

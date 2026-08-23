@@ -3,6 +3,18 @@
 All notable changes are recorded here. The format follows Keep a Changelog and the
 project uses Semantic Versioning.
 
+## [0.2.0] - 2026-08-24
+
+### Added
+
+- Validate public attestation schema, canonical encoding, field types, aggregate
+  consistency, and redaction constraints without a private seal or release key.
+- Report structural validation separately from keyed authentication in JSON and SARIF.
+
+### Fixed
+
+- Report the installed SplitSeal version in SARIF metadata.
+
 ## [0.1.1] - 2026-08-24
 
 ### Fixed
@@ -24,5 +36,6 @@ project uses Semantic Versioning.
 - JSON and SARIF 2.1.0 reports.
 - Repository-root containment, Unicode normalization, and symlink checks.
 
+[0.2.0]: https://github.com/tovellan/splitseal/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/tovellan/splitseal/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tovellan/splitseal/releases/tag/v0.1.0
