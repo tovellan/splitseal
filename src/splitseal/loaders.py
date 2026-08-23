@@ -44,7 +44,7 @@ def _load_jsonl(path: Path) -> list[Record]:
             )
         except SplitSealError:
             raise
-        except (json.JSONDecodeError, UnicodeError) as exc:
+        except (RecursionError, json.JSONDecodeError, UnicodeError) as exc:
             raise fail("SS020", "malformed JSONL record", line=line_number) from exc
         records.append(ensure_record(value, location=f"line {line_number}"))
     if not records:

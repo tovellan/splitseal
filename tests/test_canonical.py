@@ -56,6 +56,18 @@ def test_canonicalization_rejects_non_string_keys_and_objects() -> None:
     assert object_error.value.code == "SS011"
 
 
+def test_canonicalization_rejects_excessive_nesting_with_stable_error() -> None:
+    value: object = 0
+    for _ in range(101):
+        value = [value]
+
+    with pytest.raises(SplitSealError) as caught:
+        canonicalize(value)  # type: ignore[arg-type]
+
+    assert caught.value.code == "SS011"
+    assert caught.value.details["maximum_depth"] == 100
+
+
 def test_sequence_digest_is_order_sensitive() -> None:
     first = record_digest({"id": "one"})
     second = record_digest({"id": "two"})

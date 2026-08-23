@@ -97,6 +97,29 @@ def test_cli_errors_are_machine_readable(project: Path, capsys: pytest.CaptureFi
     assert json.loads(captured.err)["error"]["code"] == "SS001"
 
 
+def test_cli_deeply_nested_artifact_failure_is_machine_readable(
+    project: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    path = project / "artifacts" / "deep.json"
+    path.write_text('{"value":' + "[" * 101 + "0" + "]" * 101 + "}\n", encoding="utf-8")
+
+    exit_code = main(
+        [
+            "validate-public",
+            "--root",
+            str(project),
+            "--attestation",
+            "artifacts/deep.json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert captured.out == ""
+    assert json.loads(captured.err)["error"]["code"] == "SS044"
+
+
 def test_cli_rollback_failure_is_machine_readable(
     project: Path,
     capsys: pytest.CaptureFixture[str],

@@ -65,7 +65,7 @@ def _validate_name(value: str, context: str) -> None:
 def parse_config_bytes(data: bytes) -> DatasetConfig:
     try:
         raw = tomllib.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+    except (RecursionError, UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise fail("SS010", "configuration is not valid UTF-8 TOML") from exc
     if raw.get("schema_version") != "splitseal.config.v1":
         raise fail("SS010", "configuration schema_version must be splitseal.config.v1")

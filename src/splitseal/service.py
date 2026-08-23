@@ -330,11 +330,15 @@ def _load_json_file(path: Path, description: str) -> dict[str, Any]:
         value = json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
     except SplitSealError:
         raise
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (OSError, RecursionError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise fail("SS044", f"{description} is not valid UTF-8 JSON", path=path.name) from exc
     if not isinstance(value, dict):
         raise fail("SS044", f"{description} must be a JSON object", path=path.name)
-    if raw != canonicalize(_json_value(value)) + b"\n":
+    try:
+        canonical = canonicalize(_json_value(value)) + b"\n"
+    except SplitSealError as exc:
+        raise fail("SS044", f"{description} contains invalid JSON values", path=path.name) from exc
+    if raw != canonical:
         raise fail("SS044", f"{description} is not canonically encoded", path=path.name)
     return value
 
