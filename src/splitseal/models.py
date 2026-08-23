@@ -124,4 +124,4 @@ def load_config(path: Path) -> DatasetConfig:
     try:
         return parse_config_bytes(path.read_bytes())
     except OSError as exc:
-        raise fail("SS001", "configuration could not be read", path=str(path)) from exc
+        raise fail("SS001", "configuration could not be read", path=path.name) from exc
