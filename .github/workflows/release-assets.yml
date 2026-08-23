@@ -130,10 +130,10 @@ jobs:
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.12.5"
-      - name: Build distributions
-        run: |
-          uv build
-          rm -f dist/.gitignore
+      - name: Build tag-matched distributions and checksums
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: python scripts/release_assets.py --tag "$RELEASE_TAG" --output-dir dist
       - name: Generate and validate public release notes
         env:
           GH_TOKEN: ${{ github.token }}
