@@ -9,14 +9,18 @@ import yaml
 WORKFLOW_PATH = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "release-assets.yml"
 
 
-def _release_steps() -> list[Mapping[str, Any]]:
+def _release_job() -> Mapping[str, Any]:
     document = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
     assert isinstance(document, Mapping)
     jobs = document.get("jobs")
     assert isinstance(jobs, Mapping)
     build = jobs.get("build")
     assert isinstance(build, Mapping)
-    steps = build.get("steps")
+    return build
+
+
+def _release_steps() -> list[Mapping[str, Any]]:
+    steps = _release_job().get("steps")
     assert isinstance(steps, list)
     assert all(isinstance(step, Mapping) for step in steps)
     return steps
@@ -144,3 +148,45 @@ def test_release_closure_is_retryable_after_publication() -> None:
     assert "2>/dev/null" in verify
     assert 'gh release verify "$RELEASE_TAG" --format json' in verify
     assert "sleep 15" in verify
+
+
+def test_distribution_provenance_precedes_irreversible_publication() -> None:
+    assert _release_job().get("permissions") == {
+        "artifact-metadata": "write",
+        "attestations": "write",
+        "contents": "write",
+        "id-token": "write",
+    }
+
+    attest = _step("Attest wheel and source archive provenance")
+    assert attest.get("if") == "steps.verify-tag.outputs.release_state != 'published'"
+    assert attest.get("uses") == (
+        "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d"
+    )
+    settings = attest.get("with")
+    assert isinstance(settings, Mapping)
+    assert settings.get("subject-checksums") == "dist/SHA256SUMS"
+
+    verify_step = _step("Verify distribution provenance")
+    assert "if" not in verify_step
+    verify = _run("Verify distribution provenance")
+    assert "dist/*.whl dist/*.tar.gz" in verify
+    assert "for attempt in {1..20}" in verify
+    assert '--repo "$GITHUB_REPOSITORY"' in verify
+    assert '--signer-workflow "$signer_workflow"' in verify
+    assert '--signer-digest "$GITHUB_SHA"' in verify
+    assert '--source-ref "$GITHUB_REF"' in verify
+    assert '--source-digest "$GITHUB_SHA"' in verify
+
+    assert _step_index("Build tag-matched distributions and checksums") < _step_index(
+        "Attest wheel and source archive provenance"
+    )
+    assert _step_index("Attest wheel and source archive provenance") < _step_index(
+        "Attach exact draft assets"
+    )
+    assert _step_index("Attach exact draft assets") < _step_index(
+        "Verify distribution provenance"
+    )
+    assert _step_index("Verify distribution provenance") < _step_index(
+        "Publish complete draft release"
+    )

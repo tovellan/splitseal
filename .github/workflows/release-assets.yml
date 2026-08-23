@@ -21,7 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      artifact-metadata: write
+      attestations: write
       contents: write
+      id-token: write
     steps:
       - name: Verify release tag targets protected main
         id: verify-tag
@@ -129,6 +132,11 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: python scripts/release_assets.py --tag "$RELEASE_TAG" --output-dir dist
+      - name: Attest wheel and source archive provenance
+        if: steps.verify-tag.outputs.release_state != 'published'
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-checksums: dist/SHA256SUMS
       - name: Generate and validate public release notes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -215,6 +223,30 @@ jobs:
             jq '[.[][]]' > "$RUNNER_TEMP/draft-assets.json"
           python scripts/validate_release_assets.py \
             --local-dir dist --inventory "$RUNNER_TEMP/draft-assets.json"
+      - name: Verify distribution provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          signer_workflow="github.com/$GITHUB_REPOSITORY/.github/workflows/release-assets.yml"
+          for artifact in dist/*.whl dist/*.tar.gz; do
+            verified=false
+            for attempt in {1..20}; do
+              if gh attestation verify "$artifact" \
+                --repo "$GITHUB_REPOSITORY" \
+                --signer-workflow "$signer_workflow" \
+                --signer-digest "$GITHUB_SHA" \
+                --source-ref "$GITHUB_REF" \
+                --source-digest "$GITHUB_SHA" >/dev/null 2>&1; then
+                verified=true
+                break
+              fi
+              sleep 3
+            done
+            if [ "$verified" != "true" ]; then
+              echo "distribution provenance verification failed: ${artifact##*/}" >&2
+              exit 1
+            fi
+          done
       - name: Publish complete draft release
         if: steps.verify-tag.outputs.release_state != 'published'
         env:
