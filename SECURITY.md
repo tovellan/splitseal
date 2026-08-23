@@ -21,10 +21,13 @@ and unsafe plugin behavior. The documented trust boundaries in
 
 ## Release publication
 
-The release workflow accepts an existing version tag, builds the distributions, and uses
-`gh release create` to attach every asset while the release is still a draft before
-publication. Closure requires the GitHub Releases API to report `immutable: true` and
-GitHub's automatic release attestation to verify. The GitHub Releases API reports
+The release workflow accepts an existing version tag, requires it to match the package
+version exactly, and builds into an empty directory. It produces a sorted `SHA256SUMS`
+alongside the wheel and source archive, then attaches every asset while the release is
+still a draft before publication. Checksums establish download integrity against the
+GitHub release; they are not a publisher signature or an independent transparency log.
+Closure requires the GitHub Releases API to report `immutable: true` and GitHub's
+automatic release attestation to verify. The GitHub Releases API reports
 `immutable: false` for release v0.2.3.
 
 Before checkout, the workflow requires an annotated or signed version-tag object, resolves
