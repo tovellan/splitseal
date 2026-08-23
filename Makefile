@@ -1,4 +1,4 @@
-.PHONY: format lint test check build clean-install audit example release-gate
+.PHONY: format lint test check version-audit build clean-install audit example release-gate
 
 format:
 	uv run ruff format .
@@ -12,9 +12,12 @@ lint:
 test:
 	uv run pytest
 
-check: lint test
+check: lint test version-audit
 	uv run python scripts/check_text_policy.py
 	uv run python scripts/repository_audit.py
+
+version-audit:
+	uv run python scripts/version_audit.py
 
 build:
 	uv build
