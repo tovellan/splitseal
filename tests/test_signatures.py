@@ -237,6 +237,31 @@ def test_noncanonical_signature_and_cryptographic_mismatches(project: Path) -> N
     assert authentication.value.code == "SS074"
 
 
+def test_duplicate_signature_and_trust_store_json_fields_fail_closed(project: Path) -> None:
+    _freeze(project)
+    entry = _write_material(project, 0, "first")
+    trust_path = project / "keys" / "trust.json"
+    trust_path.write_bytes(trust_store_bytes([entry]))
+    _sign(project)
+    signature_path = project / "artifacts" / "first.signature.json"
+    signature_bytes = signature_path.read_bytes()
+    signature_path.write_bytes(
+        signature_bytes.removesuffix(b"\n")[:-1] + b',"algorithm":"ed25519"}\n'
+    )
+    with pytest.raises(SplitSealError) as duplicate_signature:
+        _verify(project)
+    assert duplicate_signature.value.code == "SS044"
+
+    signature_path.write_bytes(signature_bytes)
+    trust_bytes = trust_path.read_bytes()
+    trust_path.write_bytes(
+        trust_bytes.removesuffix(b"\n")[:-1] + b',"schema_version":"splitseal.trust-store.v1"}\n'
+    )
+    with pytest.raises(SplitSealError) as duplicate_trust_field:
+        _verify(project)
+    assert duplicate_trust_field.value.code == "SS044"
+
+
 def test_modified_attestation_fails_signature_digest_check(project: Path) -> None:
     attestation_path = _freeze(project)
     entry = _write_material(project, 0, "first")
@@ -317,6 +342,18 @@ def test_trust_store_schema_and_entry_failures(project: Path) -> None:
         with pytest.raises(SplitSealError) as caught:
             _verify(project)
         assert caught.value.code == "SS071"
+
+
+def test_trust_store_public_api_normalizes_noniterable_and_mixed_keys() -> None:
+    with pytest.raises(SplitSealError) as noniterable:
+        trust_store_bytes(None)  # type: ignore[arg-type]
+    assert noniterable.value.code == "SS071"
+
+    _private_bytes, entry = _material(0)
+    mixed_keys: dict[object, Any] = {**entry, 4: True}
+    with pytest.raises(SplitSealError) as mixed:
+        trust_store_bytes([mixed_keys])  # type: ignore[list-item]
+    assert mixed.value.code == "SS071"
 
 
 @pytest.mark.parametrize("status", [[], {}])

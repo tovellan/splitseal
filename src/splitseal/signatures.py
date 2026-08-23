@@ -126,7 +126,11 @@ def _require_fields(
 def trust_store_bytes(entries: Sequence[Mapping[str, Any]]) -> bytes:
     """Validate public key entries and encode one canonical v1 trust store."""
 
-    parsed = _parse_trust_entries(list(entries))
+    try:
+        materialized = list(entries)
+    except TypeError as exc:
+        raise fail("SS071", "trust store keys must be a non-empty array") from exc
+    parsed = _parse_trust_entries(materialized)
     ordered_entries = [cast("JSONValue", parsed[key_id][1]) for key_id in sorted(parsed)]
     value: JSONValue = {"schema_version": TRUST_STORE_SCHEMA, "keys": ordered_entries}
     return canonicalize(value) + b"\n"
