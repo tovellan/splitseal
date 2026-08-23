@@ -3,6 +3,14 @@
 All notable changes are recorded here. The format follows Keep a Changelog and the
 project uses Semantic Versioning.
 
+## [0.2.1] - 2026-08-24
+
+### Changed
+
+- Document the exact public-attestation validation contract, failure codes, and explicit
+  no-authentication boundary.
+- Align API support and roadmap text with the 0.2 release line.
+
 ## [0.2.0] - 2026-08-24
 
 ### Added
@@ -36,6 +44,7 @@ project uses Semantic Versioning.
 - JSON and SARIF 2.1.0 reports.
 - Repository-root containment, Unicode normalization, and symlink checks.
 
+[0.2.1]: https://github.com/tovellan/splitseal/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tovellan/splitseal/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/tovellan/splitseal/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/tovellan/splitseal/releases/tag/v0.1.0
