@@ -5,6 +5,12 @@ project uses Semantic Versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- Require an exact release-tag and package-version match before building release assets.
+- Publish a sorted `SHA256SUMS` file with the wheel and source archive, and refuse stale
+  output directories or release-asset overwrites.
+
 ### Fixed
 
 - Attach distributions while a release is still a draft, then require GitHub release
