@@ -12,6 +12,8 @@ project uses Semantic Versioning.
   output directories or release-asset overwrites.
 - Record Sigstore-signed GitHub build-provenance attestations for the checksummed wheel
   and source archive.
+- Record the GitHub Releases API `immutable` value after asset upload without treating
+  checksum publication as an immutability guarantee.
 - Scope checksum instructions to releases produced after the new workflow takes effect.
 - Scope provenance instructions to releases produced after attestation takes effect.
 
