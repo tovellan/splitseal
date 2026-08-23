@@ -28,8 +28,11 @@ GitHub's automatic release attestation to verify. The GitHub Releases API report
 `immutable: false` for release v0.2.3.
 
 Before checkout, the workflow requires an annotated or signed version-tag object, resolves
-it through the GitHub API, and requires the target commit to equal the current protected
+it through the GitHub API, and requires a new release target to equal the current protected
 `main` commit. Every tag object must use the generic maintainer name and email documented
 in the release process. The workflow also requires repository release immutability to be
-enabled before checkout, then checks out the verified commit SHA. Active repository rules
-block updates and deletions of `v*` tags without bypass actors.
+enabled before checkout, then checks out the verified commit SHA. A partial draft rerun
+accepts a tag that remains in protected `main` history, verifies existing asset bytes, and
+resumes missing uploads without overwriting conflicts. A published-release rerun performs
+verification only. Active repository rules block updates and deletions of `v*` tags without
+bypass actors.

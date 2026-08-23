@@ -15,9 +15,12 @@ no-bypass `v*` update and deletion rules must remain enabled.
    publishes all assets before verifying immutability and the automatic release
    attestation.
 
-The workflow is safe to rerun after publication: it skips release creation when the tag
-already has a release and repeats immutable-release and attestation verification. It does
-not publish to PyPI, another package registry, or a container registry.
+The workflow is safe to rerun after a partial draft upload: it resumes the existing draft,
+keeps byte-identical assets, replaces only incomplete uploads, and refuses conflicting
+assets. After publication it skips checkout, build, upload, and publication and repeats
+immutable-release and attestation verification. These recovery paths require the tag target
+to remain in protected `main` history, although it need not remain the branch tip. The
+workflow does not publish to PyPI, another package registry, or a container registry.
 
 `make release-gate` performs tests, formatting checks, lint, static typing, package build,
 wheel installation, example execution, dependency audit, text policy checks, tracked-file

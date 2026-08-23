@@ -66,27 +66,52 @@ jobs:
             echo "release tag indirection is too deep" >&2
             exit 1
           fi
+          release_record="$(
+            gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+              jq -c --arg tag "$RELEASE_TAG" \
+                '[.[][] | select(.tag_name == $tag)] | if length > 1 then error("duplicate release tag") elif length == 1 then .[0] else null end'
+          )"
+          if [ "$release_record" = "null" ]; then
+            release_state="absent"
+            release_id=""
+          elif [ "$(jq -r '.draft' <<<"$release_record")" = "true" ]; then
+            release_state="draft"
+            release_id="$(jq -r '.id' <<<"$release_record")"
+          else
+            release_state="published"
+            release_id="$(jq -r '.id' <<<"$release_record")"
+          fi
           main_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
-          if [ "$object_sha" != "$main_sha" ]; then
-            echo "release tag must target the current protected main commit" >&2
-            exit 1
+          if [ "$release_state" = "absent" ]; then
+            if [ "$object_sha" != "$main_sha" ]; then
+              echo "new release tag must target the current protected main commit" >&2
+              exit 1
+            fi
+          else
+            comparison_status="$(
+              gh api "repos/$GITHUB_REPOSITORY/compare/$object_sha...$main_sha" --jq '.status'
+            )"
+            if [ "$comparison_status" != "identical" ] && [ "$comparison_status" != "ahead" ]; then
+              echo "existing release tag must remain in protected main history" >&2
+              exit 1
+            fi
           fi
           printf 'target_sha=%s\n' "$object_sha" >> "$GITHUB_OUTPUT"
-          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" >/dev/null 2>&1; then
-            printf 'release_exists=true\n' >> "$GITHUB_OUTPUT"
-          else
-            printf 'release_exists=false\n' >> "$GITHUB_OUTPUT"
-          fi
+          printf 'release_state=%s\n' "$release_state" >> "$GITHUB_OUTPUT"
+          printf 'release_id=%s\n' "$release_id" >> "$GITHUB_OUTPUT"
       - name: Check out release tag
+        if: steps.verify-tag.outputs.release_state != 'published'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ steps.verify-tag.outputs.target_sha }}
       - name: Install Python
+        if: steps.verify-tag.outputs.release_state != 'published'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
       - name: Verify tag matches package version
+        if: steps.verify-tag.outputs.release_state != 'published'
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
@@ -96,23 +121,75 @@ jobs:
             exit 1
           fi
       - name: Install uv
+        if: steps.verify-tag.outputs.release_state != 'published'
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Build distributions
+        if: steps.verify-tag.outputs.release_state != 'published'
         run: uv build
-      - name: Create release with attached distributions
-        if: steps.verify-tag.outputs.release_exists != 'true'
+      - name: Create or resume draft release
+        id: release
+        if: steps.verify-tag.outputs.release_state != 'published'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-        run: gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes
+          RELEASE_ID: ${{ steps.verify-tag.outputs.release_id }}
+          RELEASE_STATE: ${{ steps.verify-tag.outputs.release_state }}
+        run: |
+          if [ "$RELEASE_STATE" = "absent" ]; then
+            release_record="$(
+              gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
+                -f tag_name="$RELEASE_TAG" -F draft=true -F generate_release_notes=true
+            )"
+            RELEASE_ID="$(jq -r '.id' <<<"$release_record")"
+          fi
+          printf 'release_id=%s\n' "$RELEASE_ID" >> "$GITHUB_OUTPUT"
+      - name: Attach exact draft assets
+        if: steps.verify-tag.outputs.release_state != 'published'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_ID: ${{ steps.release.outputs.release_id }}
+        run: |
+          for artifact in dist/*; do
+            asset_name="${artifact##*/}"
+            asset_record="$(
+              gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100" |
+                jq -c --arg name "$asset_name" \
+                  '[.[][] | select(.name == $name)] | if length > 1 then error("duplicate release asset") elif length == 1 then .[0] else null end'
+            )"
+            if [ "$asset_record" = "null" ]; then
+              gh release upload "$RELEASE_TAG" "$artifact"
+              continue
+            fi
+            asset_id="$(jq -r '.id' <<<"$asset_record")"
+            if [ "$(jq -r '.state' <<<"$asset_record")" != "uploaded" ]; then
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+              gh release upload "$RELEASE_TAG" "$artifact"
+              continue
+            fi
+            downloaded="$RUNNER_TEMP/existing-$asset_name"
+            gh api -H 'Accept: application/octet-stream' \
+              "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "$downloaded"
+            if ! cmp -s "$artifact" "$downloaded"; then
+              echo "existing draft asset does not match the verified build: $asset_name" >&2
+              exit 1
+            fi
+          done
+      - name: Publish complete draft release
+        if: steps.verify-tag.outputs.release_state != 'published'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.release.outputs.release_id }}
+        run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false >/dev/null
       - name: Verify immutable release and automatic attestation
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           for attempt in {1..40}; do
-            state="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.immutable')"
-            if [ "$state" = "true" ] && gh release verify "$RELEASE_TAG" --format json >/dev/null; then
+            state=""
+            if state="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.immutable' 2>/dev/null)" && \
+              [ "$state" = "true" ] && gh release verify "$RELEASE_TAG" --format json >/dev/null; then
               printf 'GitHub release immutable: true\n'
               printf 'GitHub automatic release attestation: verified\n'
               exit 0

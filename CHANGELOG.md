@@ -16,6 +16,8 @@ project uses Semantic Versioning.
 - Require repository release immutability and generic tagger metadata before publication.
 - Make release-attestation verification retryable without attempting to recreate an
   already published release.
+- Resume partial draft uploads without overwriting conflicting assets, and allow
+  verification-only reruns after protected `main` advances.
 
 ## [0.2.3] - 2026-08-24
 
