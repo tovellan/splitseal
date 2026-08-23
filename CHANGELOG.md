@@ -14,6 +14,15 @@ project uses Semantic Versioning.
   checksum publication as an immutability guarantee.
 - Scope checksum instructions to releases produced after the new workflow takes effect.
 
+### Fixed
+
+- Attach distributions while a release is still a draft, then require GitHub release
+  immutability and automatic release-attestation verification after publication.
+- Resolve the release tag before checkout and require its commit to equal protected
+  `main`, then build from the verified commit SHA.
+- Require the release ref to begin with an annotated or signed tag object rather than a
+  lightweight tag.
+
 ## [0.2.3] - 2026-08-24
 
 ### Added
