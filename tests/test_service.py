@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+import splitseal.service as service_module
 from splitseal.canonical import Record, canonicalize
 from splitseal.errors import SplitSealError
 from splitseal.plugins import SimilarityFinding
@@ -178,6 +179,107 @@ def test_freeze_refuses_overwrite_and_equal_output_paths(project: Path) -> None:
             secret=SECRET,
         )
     assert equal.value.code == "SS004"
+
+
+def test_initial_write_failure_removes_partial_output(
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attestation_path = project / "artifacts" / "release.attestation.json"
+    real_replace = service_module.os.replace
+    failed = False
+
+    def fail_attestation_once(source: str | Path, target: str | Path) -> None:
+        nonlocal failed
+        if not failed and Path(target) == attestation_path:
+            failed = True
+            raise OSError("synthetic attestation write failure")
+        real_replace(source, target)
+
+    monkeypatch.setattr(service_module.os, "replace", fail_attestation_once)
+    with pytest.raises(OSError, match="synthetic attestation write failure"):
+        freeze(project)
+
+    assert not (project / "artifacts" / "release.sseal").exists()
+    assert not attestation_path.exists()
+
+
+def test_forced_write_failure_restores_previous_output_pair(
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    freeze(project)
+    seal_path = project / "artifacts" / "release.sseal"
+    attestation_path = project / "artifacts" / "release.attestation.json"
+    previous_seal = seal_path.read_bytes()
+    previous_attestation = attestation_path.read_bytes()
+    write_config(project, version="1.1.0")
+
+    real_replace = service_module.os.replace
+    failed = False
+
+    def fail_attestation_once(source: str | Path, target: str | Path) -> None:
+        nonlocal failed
+        if not failed and Path(target) == attestation_path:
+            failed = True
+            raise OSError("synthetic attestation replacement failure")
+        real_replace(source, target)
+
+    monkeypatch.setattr(service_module.os, "replace", fail_attestation_once)
+    with pytest.raises(OSError, match="synthetic attestation replacement failure"):
+        freeze_release(
+            root=project,
+            config_path="splitseal.toml",
+            seal_path="artifacts/release.sseal",
+            attestation_path="artifacts/release.attestation.json",
+            secret=SECRET,
+            force=True,
+        )
+
+    assert seal_path.read_bytes() == previous_seal
+    assert attestation_path.read_bytes() == previous_attestation
+    assert not tuple((project / "artifacts").glob(".*.backup.*"))
+
+
+def test_rollback_failure_preserves_recovery_backup(
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    freeze(project)
+    seal_path = project / "artifacts" / "release.sseal"
+    attestation_path = project / "artifacts" / "release.attestation.json"
+    previous_seal = seal_path.read_bytes()
+
+    real_replace = service_module.os.replace
+    write_failed = False
+
+    def fail_write_and_rollback(source: str | Path, target: str | Path) -> None:
+        nonlocal write_failed
+        source_path = Path(source)
+        target_path = Path(target)
+        if not write_failed and target_path == attestation_path:
+            write_failed = True
+            raise OSError("synthetic attestation replacement failure")
+        if write_failed and target_path == seal_path and ".backup." in source_path.name:
+            raise OSError("synthetic rollback failure")
+        real_replace(source, target)
+
+    monkeypatch.setattr(service_module.os, "replace", fail_write_and_rollback)
+    with pytest.raises(SplitSealError, match="release output rollback failed") as caught:
+        freeze_release(
+            root=project,
+            config_path="splitseal.toml",
+            seal_path="artifacts/release.sseal",
+            attestation_path="artifacts/release.attestation.json",
+            secret=SECRET,
+            force=True,
+        )
+
+    assert caught.value.code == "SS005"
+    backups = tuple((project / "artifacts").glob(".release.sseal.backup.*"))
+    assert len(backups) == 1
+    assert backups[0].read_bytes() == previous_seal
+    assert caught.value.details == {"recovery_files": [backups[0].name]}
 
 
 class PassingPlugin:

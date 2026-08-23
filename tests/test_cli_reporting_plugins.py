@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import splitseal.service as service_module
 from splitseal.cli import main
 from splitseal.errors import SplitSealError
 from splitseal.plugins import load_similarity_plugin
@@ -94,6 +95,54 @@ def test_cli_errors_are_machine_readable(project: Path, capsys: pytest.CaptureFi
     assert exit_code == 2
     assert captured.out == ""
     assert json.loads(captured.err)["error"]["code"] == "SS001"
+
+
+def test_cli_rollback_failure_is_machine_readable(
+    project: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = [
+        "freeze",
+        "--root",
+        str(project),
+        "splitseal.toml",
+        "--seal",
+        "artifacts/rollback.sseal",
+        "--attestation",
+        "artifacts/rollback.json",
+        "--key-file",
+        "keys/release.key",
+    ]
+    assert main(arguments) == 0
+    capsys.readouterr()
+
+    seal_path = project / "artifacts" / "rollback.sseal"
+    attestation_path = project / "artifacts" / "rollback.json"
+    real_replace = service_module.os.replace
+    write_failed = False
+
+    def fail_write_and_rollback(source: str | Path, target: str | Path) -> None:
+        nonlocal write_failed
+        source_path = Path(source)
+        target_path = Path(target)
+        if not write_failed and target_path == attestation_path:
+            write_failed = True
+            raise OSError("synthetic attestation replacement failure")
+        if write_failed and target_path == seal_path and ".backup." in source_path.name:
+            raise OSError("synthetic rollback failure")
+        real_replace(source, target)
+
+    monkeypatch.setattr(service_module.os, "replace", fail_write_and_rollback)
+    exit_code = main([*arguments, "--force"])
+    captured = capsys.readouterr()
+    report = json.loads(captured.err)
+
+    assert exit_code == 2
+    assert captured.out == ""
+    assert report["error"]["code"] == "SS005"
+    assert len(report["error"]["details"]["recovery_files"]) == 1
+    assert report["error"]["details"]["recovery_files"][0].startswith(".rollback.sseal.backup.")
 
 
 def test_cli_sarif_is_valid_shape(project: Path, capsys: pytest.CaptureFixture[str]) -> None:

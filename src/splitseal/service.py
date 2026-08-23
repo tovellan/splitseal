@@ -192,14 +192,27 @@ def _write_temp(target: Path, content: bytes, mode: int) -> Path:
     return temporary
 
 
-def _atomic_write_pair(
+def _reserve_backup(target: Path) -> Path:
+    descriptor, raw_path = tempfile.mkstemp(
+        prefix=f".{target.name}.backup.",
+        dir=target.parent,
+    )
+    os.close(descriptor)
+    return Path(raw_path)
+
+
+def _atomic_write_pair(  # noqa: PLR0912
     first: tuple[Path, bytes, int],
     second: tuple[Path, bytes, int],
     *,
     force: bool,
 ) -> None:
-    for target, _content, _mode in (first, second):
-        if target.exists() and not force:
+    outputs = (first, second)
+    existing: dict[Path, bool] = {}
+    for target, _content, _mode in outputs:
+        target_exists = target.exists()
+        existing[target] = target_exists
+        if target_exists and not force:
             raise fail(
                 "SS004",
                 "output already exists; pass --force to replace it",
@@ -211,12 +224,54 @@ def _atomic_write_pair(
     except BaseException:
         first_temp.unlink(missing_ok=True)
         raise
+    backups: dict[Path, Path] = {}
+    installed: set[Path] = set()
+    preserve_backups = False
     try:
-        os.replace(first_temp, first[0])
-        os.replace(second_temp, second[0])
+        for target, _content, _mode in outputs:
+            if existing[target]:
+                backup = _reserve_backup(target)
+                try:
+                    os.replace(target, backup)
+                except BaseException:
+                    backup.unlink(missing_ok=True)
+                    raise
+                backups[target] = backup
+
+        for temporary, (target, _content, _mode) in zip(
+            (first_temp, second_temp),
+            outputs,
+            strict=True,
+        ):
+            os.replace(temporary, target)
+            installed.add(target)
+    except BaseException:
+        rollback_errors: list[BaseException] = []
+        for target, backup in reversed(tuple(backups.items())):
+            try:
+                os.replace(backup, target)
+            except BaseException as exc:
+                rollback_errors.append(exc)
+        for target in installed - backups.keys():
+            try:
+                target.unlink(missing_ok=True)
+            except BaseException as exc:
+                rollback_errors.append(exc)
+        if rollback_errors:
+            preserve_backups = True
+            recovery_files = sorted(backup.name for backup in backups.values() if backup.exists())
+            raise fail(
+                "SS005",
+                "release output rollback failed; recovery backup retained",
+                recovery_files=recovery_files,
+            ) from rollback_errors[0]
+        raise
     finally:
         first_temp.unlink(missing_ok=True)
         second_temp.unlink(missing_ok=True)
+        if not preserve_backups:
+            for backup in backups.values():
+                backup.unlink(missing_ok=True)
 
 
 def freeze_release(  # noqa: PLR0913
