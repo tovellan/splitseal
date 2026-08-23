@@ -11,6 +11,8 @@ project uses Semantic Versioning.
   immutability and automatic release-attestation verification after publication.
 - Resolve the release tag before checkout and require its commit to equal protected
   `main`, then build from the verified commit SHA.
+- Require the release ref to begin with an annotated or signed tag object rather than a
+  lightweight tag.
 
 ## [0.2.3] - 2026-08-24
 

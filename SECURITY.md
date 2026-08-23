@@ -27,7 +27,7 @@ publication. Closure requires the GitHub Releases API to report `immutable: true
 GitHub's automatic release attestation to verify. Release v0.2.3 predates repository
 release immutability and cannot be made immutable retroactively.
 
-Before checkout, the workflow resolves lightweight or annotated version tags through the
-GitHub API and requires the target commit to equal the current protected `main` commit.
-It checks out that verified commit SHA. Active repository rules block updates and
-deletions of `v*` tags without bypass actors.
+Before checkout, the workflow requires an annotated or signed version-tag object, resolves
+it through the GitHub API, and requires the target commit to equal the current protected
+`main` commit. It checks out that verified commit SHA. Active repository rules block
+updates and deletions of `v*` tags without bypass actors.

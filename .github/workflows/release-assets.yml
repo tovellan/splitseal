@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing v-prefixed release tag
+        description: Existing annotated or signed v-prefixed release tag
         required: true
         type: string
 
@@ -35,6 +35,10 @@ jobs:
           fi
           object_type="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.type')"
           object_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+          if [ "$object_type" != "tag" ]; then
+            echo "release tag must be an annotated or signed tag object" >&2
+            exit 1
+          fi
           for attempt in 1 2 3 4 5; do
             if [ "$object_type" = "commit" ]; then
               break
