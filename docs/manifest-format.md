@@ -8,8 +8,10 @@ Readers reject unsupported schema identifiers.
 Schema: `splitseal.seal.v1`
 
 The outer object contains fixed scrypt parameters, a random salt, an AES-256-GCM nonce,
-and ciphertext. Binary fields use unpadded base64url. The schema identifier is authenticated
-as additional data.
+and ciphertext. Binary fields use canonical unpadded base64url. The outer object contains
+exactly `schema_version`, `kdf`, and `cipher`; the nested parameter objects also reject
+unknown or missing fields with `SS040`. The schema identifier is authenticated as
+additional data.
 
 The encrypted `splitseal.private-manifest.v1` object contains:
 

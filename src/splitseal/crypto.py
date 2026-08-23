@@ -33,12 +33,28 @@ def _b64encode(value: bytes) -> str:
 
 
 def _b64decode(value: object, field: str) -> bytes:
-    if not isinstance(value, str):
-        raise fail("SS040", "sealed manifest field must be a string", field=field)
+    if not isinstance(value, str) or "=" in value:
+        raise fail(
+            "SS040",
+            "sealed manifest field must be unpadded base64url",
+            field=field,
+        )
     try:
-        return base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
+        decoded = base64.b64decode(
+            value + "=" * (-len(value) % 4),
+            altchars=b"-_",
+            validate=True,
+        )
     except (ValueError, TypeError) as exc:
         raise fail("SS040", "sealed manifest contains invalid base64url", field=field) from exc
+    if _b64encode(decoded) != value:
+        raise fail("SS040", "sealed manifest contains noncanonical base64url", field=field)
+    return decoded
+
+
+def _require_fields(value: dict[object, object], expected: set[str], context: str) -> None:
+    if set(value) != expected:
+        raise fail("SS040", "sealed manifest fields do not match the schema", context=context)
 
 
 def validate_secret(secret: bytes) -> None:
@@ -97,12 +113,17 @@ def seal_manifest(manifest: JSONValue, secret: bytes) -> bytes:
 
 
 def open_seal(container: object, secret: bytes) -> dict[str, JSONValue]:
-    if not isinstance(container, dict) or container.get("schema_version") != SEAL_SCHEMA:
+    if not isinstance(container, dict):
+        raise fail("SS040", "sealed manifest must be an object")
+    _require_fields(container, {"schema_version", "kdf", "cipher"}, "seal")
+    if container.get("schema_version") != SEAL_SCHEMA:
         raise fail("SS040", "sealed manifest has an unsupported schema")
     kdf = container.get("kdf")
     cipher = container.get("cipher")
     if not isinstance(kdf, dict) or not isinstance(cipher, dict):
         raise fail("SS040", "sealed manifest is missing cryptographic parameters")
+    _require_fields(kdf, {"name", "n", "r", "p", "salt"}, "kdf")
+    _require_fields(cipher, {"name", "nonce", "ciphertext"}, "cipher")
     expected_kdf = {"name": "scrypt", "n": _KDF_N, "r": _KDF_R, "p": _KDF_P}
     if any(kdf.get(key) != value for key, value in expected_kdf.items()):
         raise fail("SS040", "sealed manifest uses unsupported KDF parameters")

@@ -43,8 +43,13 @@ def test_wrong_key_and_ciphertext_tampering_fail_authentication() -> None:
     "mutator",
     [
         lambda value: value.update(schema_version="wrong"),
+        lambda value: value.update(unknown=True),
         lambda value: value.pop("kdf"),
+        lambda value: value["kdf"].update(unknown=True),
+        lambda value: value["kdf"].pop("salt"),
         lambda value: value["kdf"].update(n=1),
+        lambda value: value["cipher"].update(unknown=True),
+        lambda value: value["cipher"].pop("nonce"),
         lambda value: value["cipher"].update(name="unknown"),
         lambda value: value["kdf"].update(salt="!"),
         lambda value: value["cipher"].update(nonce="AA"),
@@ -53,6 +58,30 @@ def test_wrong_key_and_ciphertext_tampering_fail_authentication() -> None:
 def test_malformed_seal_parameters_are_rejected(mutator: object) -> None:
     seal = json.loads(seal_manifest({"value": "synthetic"}, SECRET))
     mutator(seal)  # type: ignore[operator]
+    with pytest.raises(SplitSealError) as caught:
+        open_seal(seal, SECRET)
+    assert caught.value.code == "SS040"
+
+
+@pytest.mark.parametrize(
+    ("section", "field"),
+    [
+        ("kdf", "salt"),
+        ("cipher", "nonce"),
+        ("cipher", "ciphertext"),
+    ],
+)
+def test_seal_rejects_padded_base64url(section: str, field: str) -> None:
+    seal = json.loads(seal_manifest({"value": "synthetic"}, SECRET))
+    seal[section][field] += "="
+    with pytest.raises(SplitSealError) as caught:
+        open_seal(seal, SECRET)
+    assert caught.value.code == "SS040"
+
+
+def test_seal_rejects_standard_base64_alphabet() -> None:
+    seal = json.loads(seal_manifest({"value": "synthetic"}, SECRET))
+    seal["kdf"]["salt"] = "/////////////////////w"
     with pytest.raises(SplitSealError) as caught:
         open_seal(seal, SECRET)
     assert caught.value.code == "SS040"
