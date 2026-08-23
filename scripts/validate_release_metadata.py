@@ -24,7 +24,7 @@ PRIVATE_REFERENCE_PATTERNS = (
     re.compile(re.escape("startup" + "-idea"), re.IGNORECASE),
     re.compile(
         r"(?i)tovellan-(?:platform|bench|codex|design|trust|web|infra|handbook|"
-        r"research|brand|sdk|gst-bench)\b"
+        r"research|brand|sdk)\b"
     ),
     re.compile(re.escape("GST" + "-Bench"), re.IGNORECASE),
     re.compile("61f214" + "e7272095", re.IGNORECASE),
@@ -32,9 +32,9 @@ PRIVATE_REFERENCE_PATTERNS = (
     re.compile(r"(?i)cosine\s*(?:>=|≥)\s*0\.88"),
 )
 PRODUCT_POSITIONING_PATTERNS = (
-    re.compile(r"(?i)\bfounders?\b"),
-    re.compile(r"(?i)(?<![a-z])yc(?![a-z])"),
-    re.compile(r"(?i)\bhumani[sz](?:e[ds]?|ing|ation)\b"),
+    re.compile(r"(?i)\b" + "found" + r"ers?\b"),
+    re.compile(r"(?i)(?<![a-z])" + "y" + "c" + r"(?![a-z])"),
+    re.compile(r"(?i)\b" + "humani" + r"[sz](?:e[ds]?|ing|ation)\b"),
 )
 LOCAL_PATH_PATTERNS = (
     re.compile(re.escape("/" + "Users" + "/"), re.IGNORECASE),
