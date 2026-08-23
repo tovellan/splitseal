@@ -30,8 +30,10 @@ registry. Install a tagged source release from GitHub:
 python -m pip install "splitseal @ git+https://github.com/tovellan/splitseal.git@v0.2.3"
 ```
 
-Tagged GitHub releases include a wheel, a source archive, and `SHA256SUMS`. Download all
-three files and verify the distributions before installation:
+Starting with the first release produced after this workflow change, tagged GitHub
+releases include a wheel, a source archive, and `SHA256SUMS`. Release v0.2.3 predates the
+workflow and does not include a checksum manifest. For a release that includes all three
+files, verify the distributions before installation:
 
 ```console
 shasum -a 256 -c SHA256SUMS

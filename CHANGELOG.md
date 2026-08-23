@@ -12,6 +12,7 @@ project uses Semantic Versioning.
   output directories or release-asset overwrites.
 - Record Sigstore-signed GitHub build-provenance attestations for the checksummed wheel
   and source archive.
+- Scope checksum instructions to releases produced after the new workflow takes effect.
 
 ## [0.2.3] - 2026-08-24
 
