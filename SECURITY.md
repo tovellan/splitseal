@@ -18,3 +18,8 @@ Security-sensitive areas include canonicalization ambiguity, path escape, symlin
 attestation disclosure, cross-split duplicate bypass, seal authentication, key handling,
 and unsafe plugin behavior. The documented trust boundaries in
 [`docs/threat-model.md`](docs/threat-model.md) are part of the security contract.
+
+CI jobs receive read-only repository contents by default and checkout removes persisted
+credentials after initial fetch. Jobs have explicit timeouts, and superseded validation
+runs are cancelled per ref. Published-release jobs are serialized per tag but never
+cancelled by a later run.
