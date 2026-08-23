@@ -77,9 +77,10 @@ def _build_manifest(
     plugin_evidence: list[dict[str, Any]] = []
     similarity_finding_count = 0
     for plugin_config in config.similarity:
-        plugin = plugin_loader(plugin_config.plugin)
         try:
+            plugin = plugin_loader(plugin_config.plugin)
             findings = list(plugin.analyze(split_records, plugin_config.settings))
+            plugin_version = str(plugin.version)
         except SplitSealError:
             raise
         except Exception as exc:
@@ -92,7 +93,7 @@ def _build_manifest(
         plugin_evidence.append(
             {
                 "name": plugin_config.plugin,
-                "version": str(plugin.version),
+                "version": plugin_version,
                 "status": "pass" if not findings else "fail",
             }
         )

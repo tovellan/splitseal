@@ -3,6 +3,12 @@
 All notable changes are recorded here. The format follows Keep a Changelog and the
 project uses Semantic Versioning.
 
+## [Unreleased]
+
+### Fixed
+
+- Normalize plugin discovery, loading, execution, and evidence failures to SS060 or SS061.
+
 ## [0.2.3] - 2026-08-24
 
 ### Added

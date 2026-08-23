@@ -437,6 +437,30 @@ def test_similarity_plugin_exception_is_wrapped(project: Path) -> None:
     assert caught.value.code == "SS061"
 
 
+def test_similarity_plugin_loader_and_evidence_exceptions_are_wrapped(project: Path) -> None:
+    write_config(project, similarity='\n[[similarity]]\nplugin="broken"\n')
+
+    class BrokenVersionPlugin(PassingPlugin):
+        @property
+        def version(self) -> str:
+            raise RuntimeError("synthetic version failure")
+
+    def broken_loader(_name: str) -> PassingPlugin:
+        raise RuntimeError("synthetic loader failure")
+
+    for loader in (broken_loader, lambda _name: BrokenVersionPlugin()):
+        with pytest.raises(SplitSealError) as caught:
+            freeze_release(
+                root=project,
+                config_path="splitseal.toml",
+                seal_path="artifacts/fail.sseal",
+                attestation_path="artifacts/fail.json",
+                secret=SECRET,
+                plugin_loader=loader,
+            )
+        assert caught.value.code == "SS061"
+
+
 def test_diff_reports_aggregate_changes_without_identifiers(project: Path) -> None:
     freeze(project, prefix="old", secret=SECRET)
     write_jsonl(

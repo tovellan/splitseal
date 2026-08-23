@@ -223,3 +223,35 @@ def test_plugin_loader_rejects_missing_entry_point() -> None:
     with pytest.raises(SplitSealError) as caught:
         load_similarity_plugin("not-installed")
     assert caught.value.code == "SS060"
+
+
+def test_plugin_loader_wraps_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_discovery(*, group: str) -> object:
+        assert group == "splitseal.similarity"
+        raise RuntimeError("synthetic discovery failure")
+
+    monkeypatch.setattr("splitseal.plugins.entry_points", fail_discovery)
+    with pytest.raises(SplitSealError) as caught:
+        load_similarity_plugin("synthetic")
+    assert caught.value.code == "SS060"
+
+
+def test_plugin_loader_wraps_interface_property_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    class BrokenPlugin:
+        def analyze(self) -> None:
+            return None
+
+        @property
+        def version(self) -> str:
+            raise RuntimeError("synthetic version failure")
+
+    class EntryPoint:
+        name = "synthetic"
+
+        def load(self) -> type[BrokenPlugin]:
+            return BrokenPlugin
+
+    monkeypatch.setattr("splitseal.plugins.entry_points", lambda **_kwargs: [EntryPoint()])
+    with pytest.raises(SplitSealError) as caught:
+        load_similarity_plugin("synthetic")
+    assert caught.value.code == "SS060"
