@@ -5,7 +5,11 @@ from __future__ import annotations
 
 import re
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
+
+import yaml
+from yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode
 
 MAX_TRACKED_BYTES = 1_000_000
 BINARY_SUFFIXES = {
@@ -28,7 +32,6 @@ BINARY_SUFFIXES = {
     ".webm",
     ".zip",
 }
-_ACTION_REFERENCE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^\s#]+)", re.MULTILINE)
 _PINNED_ACTION = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_./-]+)?@[0-9a-f]{40}$")
 
 
@@ -56,33 +59,57 @@ def tracked_files(root: Path) -> list[Path]:
     return [root / item.decode("utf-8") for item in result.stdout.split(b"\x00") if item]
 
 
+def _uses_nodes(node: Node, seen: set[int] | None = None) -> Iterator[Node]:
+    visited = seen if seen is not None else set()
+    identity = id(node)
+    if identity in visited:
+        return
+    visited.add(identity)
+
+    if isinstance(node, MappingNode):
+        for key, value in node.value:
+            if isinstance(key, ScalarNode) and key.value == "uses":
+                yield value
+            yield from _uses_nodes(value, visited)
+    elif isinstance(node, SequenceNode):
+        for value in node.value:
+            yield from _uses_nodes(value, visited)
+
+
 def action_reference_violations(relative: Path, text: str) -> list[str]:
-    """Return mutable or otherwise unsupported external action references."""
+    """Return invalid YAML and mutable or unsupported external action references."""
 
     violations: list[str] = []
-    for match in _ACTION_REFERENCE.finditer(text):
-        reference = match.group(1)
+    try:
+        document = yaml.compose(text, Loader=yaml.SafeLoader)
+    except yaml.YAMLError as exc:
+        mark = getattr(exc, "problem_mark", None)
+        line = mark.line + 1 if mark is not None else 1
+        return [f"{relative}:{line}: action definition is not valid YAML"]
+    if document is None:
+        return violations
+
+    for node in _uses_nodes(document):
+        line = node.start_mark.line + 1
+        if not isinstance(node, ScalarNode):
+            violations.append(f"{relative}:{line}: action reference must be a scalar string")
+            continue
+        reference = node.value
         if reference.startswith("./"):
             continue
         if not _PINNED_ACTION.fullmatch(reference):
-            line = text.count("\n", 0, match.start()) + 1
             violations.append(
                 f"{relative}:{line}: external action is not pinned to a full commit SHA"
             )
     return violations
 
 
-def _contains_action_references(relative: Path) -> bool:
+def contains_action_references(relative: Path) -> bool:
     if relative.suffix not in {".yml", ".yaml"}:
         return False
     if relative.parts[:2] == (".github", "workflows"):
         return True
-    if relative.parts[:2] == (".github", "actions") and relative.name in {
-        "action.yml",
-        "action.yaml",
-    }:
-        return True
-    return relative in {Path("action.yml"), Path("action.yaml")}
+    return relative.name in {"action.yml", "action.yaml"}
 
 
 def main() -> int:
@@ -107,7 +134,7 @@ def main() -> int:
         for label, pattern in _forbidden_patterns():
             if pattern.search(text):
                 violations.append(f"{relative}: contains {label}")
-        if _contains_action_references(relative):
+        if contains_action_references(relative):
             violations.extend(action_reference_violations(relative, text))
     if violations:
         print("\n".join(sorted(violations)))

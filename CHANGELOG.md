@@ -10,6 +10,11 @@ project uses Semantic Versioning.
 - Enforce full immutable commit pins for every external action reference in GitHub
   workflows and local composite-action definitions as part of the release gate.
 
+### Fixed
+
+- Parse YAML action definitions semantically and discover composite actions in any
+  tracked directory so formatting and placement cannot bypass immutable-pin checks.
+
 ## [0.2.3] - 2026-08-24
 
 ### Added
