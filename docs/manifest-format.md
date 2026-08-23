@@ -35,7 +35,25 @@ setting, or plugin operating point.
 The keyed commitment is stable for the same private manifest and release key. A public
 reader without the key can inspect aggregate claims but cannot authenticate them.
 
+The `validate-public` command and `validate_public_attestation` Python API enforce the
+following exact v1 shape:
+
+- `tool` contains only `name` and `version`, with `name` equal to `splitseal`;
+- `release` contains only the public `name` and `version` tokens;
+- `commitment` contains only the `hmac-sha256` algorithm and 64-character lowercase
+  hexadecimal value;
+- `aggregates` contains only non-negative `record_count`, positive `split_count`, and a
+  sorted `split_counts` array whose length and sum match those totals;
+- `checks` contains only a passing exact-duplicate result and a similarity result of
+  `pass` or `not_run`.
+
+Unknown fields fail with `SS046`; malformed or missing schema fields fail with `SS045`;
+invalid, duplicate-key, or noncanonical JSON fails with `SS044`. Validation reports
+`authentication` and `keyed_authentication` as `not_performed`. It accepts no seal or key,
+and it does not prove authenticity or provenance.
+
 ## Compatibility
 
-New optional report fields may appear within a 0.1 release. Artifact interpretation does
-not change without a new schema identifier. Readers fail closed on an unknown schema.
+New optional report fields may appear within a 0.2 release. Artifact interpretation does
+not change without a new schema identifier. Attestation validation fails closed on unknown
+fields as well as an unknown schema so disclosure constraints remain explicit.

@@ -1,6 +1,6 @@
 # Python API
 
-The stable 0.1 API is exported from `splitseal`.
+The stable 0.2 API is exported from `splitseal`.
 
 ## Canonicalization
 

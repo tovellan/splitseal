@@ -2,11 +2,14 @@
 
 The roadmap is ordered by dependency and user evidence, not by a promised date.
 
-## 0.2 candidates
+## Delivered in 0.2
+
+- Public-attestation schema validation without an authenticity claim.
+
+## Next candidates
 
 - Detached signatures for public attestations, with an explicit key rotation model.
 - Streaming manifest construction for datasets that do not use similarity plugins.
-- A command that validates public-attestation schema without claiming authenticity.
 - Additional independently maintained similarity plugin examples.
 
 ## Later investigations
