@@ -98,9 +98,10 @@ def test_release_publication_is_draft_first_and_resumable() -> None:
     assert '--output "$RUNNER_TEMP/release-notes.json"' in metadata_run
     assert "--sanitize-generated" in metadata_run
 
-    build_run = _run("Build distributions")
-    assert "uv build" in build_run
-    assert "rm -f dist/.gitignore" in build_run
+    build_run = _run("Build tag-matched distributions and checksums")
+    assert "scripts/release_assets.py" in build_run
+    assert '--tag "$RELEASE_TAG"' in build_run
+    assert "--output-dir dist" in build_run
 
     attach_run = _run("Attach exact draft assets")
     assert "/assets?per_page=100" in attach_run
@@ -122,7 +123,7 @@ def test_release_publication_is_draft_first_and_resumable() -> None:
     assert "published-assets.json" in published_run
     assert "cmp -s" in published_run
 
-    assert _step_index("Build distributions") < _step_index(
+    assert _step_index("Build tag-matched distributions and checksums") < _step_index(
         "Generate and validate public release notes"
     )
     assert _step_index("Generate and validate public release notes") < _step_index(

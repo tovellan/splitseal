@@ -18,6 +18,10 @@ project uses Semantic Versioning.
   cancel superseded per-ref validation runs without cancelling published-release jobs.
 - Parse both workflow filename extensions and validate workflow security policy from YAML
   structure rather than formatting-dependent text patterns.
+- Require an exact release-tag and package-version match before building release assets.
+- Publish a sorted `SHA256SUMS` file with the wheel and source archive, and refuse stale
+  output directories or release-asset overwrites.
+- Scope checksum instructions to releases produced after the new workflow takes effect.
 
 ### Fixed
 
