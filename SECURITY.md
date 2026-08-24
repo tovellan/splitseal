@@ -16,5 +16,6 @@ days and will coordinate validation, remediation, and disclosure.
 
 Security-sensitive areas include canonicalization ambiguity, path escape, symlink races,
 attestation disclosure, cross-split duplicate bypass, seal authentication, key handling,
-and unsafe plugin behavior. The documented trust boundaries in
+unsafe plugin behavior, and CI dependency substitution. External GitHub Action references
+are release-gated to full commit SHAs. The documented trust boundaries in
 [`docs/threat-model.md`](docs/threat-model.md) are part of the security contract.
