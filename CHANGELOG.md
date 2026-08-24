@@ -9,6 +9,8 @@ project uses Semantic Versioning.
 
 - Enforce full immutable commit pins for every external action reference in GitHub
   workflows and local composite-action definitions as part of the release gate.
+- Release-gate package, runtime, lockfile, install, changelog, support, API, manifest, and
+  roadmap version consistency.
 
 ### Changed
 

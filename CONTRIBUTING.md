@@ -17,6 +17,10 @@ or redaction rules require tests for backwards compatibility and adversarial inp
 Schema changes must use a new schema identifier when an old reader could misinterpret
 the result.
 
+Release version changes must update `pyproject.toml`, runtime `__version__`, `uv.lock`, the
+README install tag, changelog, support policy, API and manifest compatibility text, and
+the delivered roadmap line together. `make check` rejects partial updates.
+
 Pull requests should explain the problem, compatibility effect, security effect, and
 validation performed. By contributing, you agree that your contribution is licensed
 under Apache License 2.0.
