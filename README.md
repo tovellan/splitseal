@@ -27,7 +27,7 @@ SplitSeal requires Python 3.11 or newer. The project is not published to a packa
 registry. Install a tagged source release from GitHub:
 
 ```console
-python -m pip install "splitseal @ git+https://github.com/tovellan/splitseal.git@v0.3.0"
+python -m pip install "splitseal @ git+https://github.com/tovellan/splitseal.git@v0.4.0"
 ```
 
 For Parquet input, add the optional dependency after cloning:
@@ -136,6 +136,9 @@ The complete synthetic example is in [`examples/synthetic`](examples/synthetic).
   unsafe.
 - Every input and output path is relative to a caller-selected repository root. Absolute
   paths, traversal, non-NFC path spellings, and escaping symlinks are rejected.
+- Exact-only freezes stream records through disk-backed duplicate and digest spools.
+  Similarity-plugin configurations retain the in-memory plugin path. See
+  [`docs/streaming-freezes.md`](docs/streaming-freezes.md).
 
 ## Similarity plugins
 

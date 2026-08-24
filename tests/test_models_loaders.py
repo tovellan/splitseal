@@ -5,8 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from splitseal.canonical import record_digest
 from splitseal.errors import SplitSealError
-from splitseal.loaders import load_records
+from splitseal.loaders import iter_records, load_records
 from splitseal.models import load_config, parse_config_bytes
 
 
@@ -93,6 +94,17 @@ def test_csv_loader_maps_all_values_to_strings(tmp_path: Path) -> None:
     path = tmp_path / "input.csv"
     path.write_text("id,value\none,42\n", encoding="utf-8")
     assert load_records(path, "csv") == [{"id": "one", "value": "42"}]
+
+
+def test_csv_loader_preserves_normalized_multiline_crlf_compatibility(tmp_path: Path) -> None:
+    path = tmp_path / "input.csv"
+    path.write_bytes(b'id,text\r\n1,"first\r\nline"\r\n')
+    expected = {"id": "1", "text": "first\nline"}
+    assert load_records(path, "csv") == [expected]
+    assert list(iter_records(path, "csv")) == [expected]
+    assert record_digest(load_records(path, "csv")[0]) == (
+        "411170b180d64efcff74f35d2e94fd600af8502e35c71636cfa28208a8b8379a"
+    )
 
 
 @pytest.mark.parametrize(

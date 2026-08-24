@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from typing import TypeAlias, cast
 
 import rfc8785
@@ -70,7 +70,7 @@ def record_digest(record: Record) -> str:
     return hashlib.sha256(_RECORD_DOMAIN + _framed(payload)).hexdigest()
 
 
-def sequence_digest(record_digests: Sequence[str]) -> str:
+def sequence_digest(record_digests: Iterable[str]) -> str:
     """Hash an ordered sequence of hexadecimal record digests."""
 
     digest = hashlib.sha256(_SEQUENCE_DOMAIN)

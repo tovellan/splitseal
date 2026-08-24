@@ -16,12 +16,19 @@ from typing import Any, cast
 from splitseal import __version__
 from splitseal.canonical import JSONValue, Record, canonicalize, dataset_digest, record_digest
 from splitseal.canonical import sequence_digest as ordered_digest
-from splitseal.crypto import commitment, open_seal, seal_manifest
+from splitseal.crypto import (
+    commitment,
+    commitment_file,
+    open_seal,
+    seal_manifest,
+    seal_manifest_file,
+)
 from splitseal.errors import SplitSealError, fail
 from splitseal.loaders import load_records
 from splitseal.models import DatasetConfig, load_config
 from splitseal.paths import safe_input_path, safe_output_path
 from splitseal.plugins import SimilarityPlugin, load_similarity_plugin
+from splitseal.streaming import StreamingManifest, build_streaming_manifest
 
 PRIVATE_SCHEMA = "splitseal.private-manifest.v1"
 ATTESTATION_SCHEMA = "splitseal.public-attestation.v1"
@@ -205,15 +212,9 @@ def _reserve_backup(target: Path) -> Path:
     return Path(raw_path)
 
 
-def _atomic_write_pair(  # noqa: PLR0912
-    first: tuple[Path, bytes, int],
-    second: tuple[Path, bytes, int],
-    *,
-    force: bool,
-) -> None:
-    outputs = (first, second)
+def _output_state(targets: tuple[Path, Path], *, force: bool) -> dict[Path, bool]:
     existing: dict[Path, bool] = {}
-    for target, _content, _mode in outputs:
+    for target in targets:
         target_exists = target.exists()
         existing[target] = target_exists
         if target_exists and not force:
@@ -222,17 +223,21 @@ def _atomic_write_pair(  # noqa: PLR0912
                 "output already exists; pass --force to replace it",
                 path=target.name,
             )
-    first_temp = _write_temp(*first)
-    try:
-        second_temp = _write_temp(*second)
-    except BaseException:
-        first_temp.unlink(missing_ok=True)
-        raise
+    return existing
+
+
+def _install_staged_pair(  # noqa: PLR0912
+    first: tuple[Path, Path],
+    second: tuple[Path, Path],
+    *,
+    existing: Mapping[Path, bool],
+) -> None:
+    outputs = (first, second)
     backups: dict[Path, Path] = {}
     installed: set[Path] = set()
     preserve_backups = False
     try:
-        for target, _content, _mode in outputs:
+        for target, _temporary in outputs:
             if existing[target]:
                 backup = _reserve_backup(target)
                 try:
@@ -242,11 +247,7 @@ def _atomic_write_pair(  # noqa: PLR0912
                     raise
                 backups[target] = backup
 
-        for temporary, (target, _content, _mode) in zip(
-            (first_temp, second_temp),
-            outputs,
-            strict=True,
-        ):
+        for target, temporary in outputs:
             os.replace(temporary, target)
             installed.add(target)
     except BaseException:
@@ -271,11 +272,94 @@ def _atomic_write_pair(  # noqa: PLR0912
             ) from rollback_errors[0]
         raise
     finally:
-        first_temp.unlink(missing_ok=True)
-        second_temp.unlink(missing_ok=True)
+        for _target, temporary in outputs:
+            temporary.unlink(missing_ok=True)
         if not preserve_backups:
             for backup in backups.values():
                 backup.unlink(missing_ok=True)
+
+
+def _atomic_write_pair(
+    first: tuple[Path, bytes, int],
+    second: tuple[Path, bytes, int],
+    *,
+    force: bool,
+) -> None:
+    existing = _output_state((first[0], second[0]), force=force)
+    first_temp = _write_temp(*first)
+    try:
+        second_temp = _write_temp(*second)
+    except BaseException:
+        first_temp.unlink(missing_ok=True)
+        raise
+    _install_staged_pair(
+        (first[0], first_temp),
+        (second[0], second_temp),
+        existing=existing,
+    )
+
+
+def _streaming_attestation(manifest: StreamingManifest, secret: bytes) -> dict[str, Any]:
+    return {
+        "schema_version": ATTESTATION_SCHEMA,
+        "tool": {"name": "splitseal", "version": __version__},
+        "release": {"name": manifest.release_name, "version": manifest.release_version},
+        "commitment": {
+            "algorithm": "hmac-sha256",
+            "value": commitment_file(manifest.path, secret),
+        },
+        "aggregates": {
+            "record_count": manifest.record_count,
+            "split_count": manifest.split_count,
+            "split_counts": list(manifest.split_counts),
+        },
+        "checks": {
+            "exact_cross_split_duplicates": "pass",
+            "similarity": "not_run",
+        },
+    }
+
+
+def _freeze_streaming(  # noqa: PLR0913
+    *,
+    config: DatasetConfig,
+    root: Path,
+    seal_file: Path,
+    attestation_file: Path,
+    secret: bytes,
+    force: bool,
+) -> dict[str, Any]:
+    existing = _output_state((seal_file, attestation_file), force=force)
+    with build_streaming_manifest(config, root) as manifest:
+        attestation = _streaming_attestation(manifest, secret)
+        descriptor, raw_seal_temp = tempfile.mkstemp(
+            prefix=f".{seal_file.name}.",
+            dir=seal_file.parent,
+        )
+        os.fchmod(descriptor, 0o600)
+        os.close(descriptor)
+        seal_temp = Path(raw_seal_temp)
+        try:
+            seal_manifest_file(manifest.path, seal_temp, secret)
+            attestation_temp = _write_temp(
+                attestation_file,
+                canonicalize(_json_value(attestation)) + b"\n",
+                0o644,
+            )
+        except BaseException:
+            seal_temp.unlink(missing_ok=True)
+            raise
+        _install_staged_pair(
+            (seal_file, seal_temp),
+            (attestation_file, attestation_temp),
+            existing=existing,
+        )
+    return {
+        "status": "created",
+        "release": attestation["release"],
+        "record_count": manifest.record_count,
+        "split_count": manifest.split_count,
+    }
 
 
 def freeze_release(  # noqa: PLR0913
@@ -296,6 +380,15 @@ def freeze_release(  # noqa: PLR0913
     if seal_file == attestation_file:
         raise fail("SS004", "seal and attestation paths must differ")
     config = load_config(config_file)
+    if not config.similarity:
+        return _freeze_streaming(
+            config=config,
+            root=root,
+            seal_file=seal_file,
+            attestation_file=attestation_file,
+            secret=secret,
+            force=force,
+        )
     manifest = _build_manifest(config, root, plugin_loader=plugin_loader)
     attestation = _public_attestation(manifest, secret)
     seal_bytes = seal_manifest(_json_value(manifest), secret)

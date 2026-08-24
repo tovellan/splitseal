@@ -1,6 +1,6 @@
 """SplitSeal public API."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 from splitseal.canonical import canonicalize, dataset_digest, record_digest
 from splitseal.errors import SplitSealError

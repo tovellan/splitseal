@@ -11,9 +11,13 @@ The roadmap is ordered by dependency and user evidence, not by a promised date.
 - Optional local Ed25519 detached signatures with derived key identity, explicit trust
   stores, rotation, all-history revocation, and public verification.
 
+## Delivered in 0.4
+
+- Bounded-memory exact-only freezes with disk-backed duplicate control, canonical
+  manifest spooling, incremental commitment, and streaming encryption.
+
 ## Next candidates
 
-- Streaming manifest construction for datasets that do not use similarity plugins.
 - Additional independently maintained similarity plugin examples.
 
 ## Later investigations

@@ -14,6 +14,11 @@ SplitSeal has four layers.
    derived HMAC-SHA256 key commits to the canonical manifest in an aggregate-only public
    attestation.
 
+Exact-only configurations stream strict records through a disk-backed SQLite digest
+index and ordered digest spools. Canonical manifest construction, HMAC commitment, and
+AES-GCM encryption are incremental. Similarity-plugin configurations retain the original
+in-memory path required by the plugin protocol.
+
 ## Data flow
 
 ```text

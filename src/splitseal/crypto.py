@@ -7,9 +7,13 @@ import hashlib
 import hmac
 import json
 import os
+import tempfile
+from pathlib import Path
+from typing import BinaryIO
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.hashes import HashAlgorithm
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
@@ -71,6 +75,68 @@ def hashlib_to_cryptography_sha256() -> HashAlgorithm:
 
 def commitment(manifest_bytes: bytes, secret: bytes) -> str:
     return hmac.new(_commitment_key(secret), manifest_bytes, hashlib.sha256).hexdigest()
+
+
+def commitment_file(manifest_path: Path, secret: bytes) -> str:
+    """Commit to manifest bytes from disk without loading the manifest into memory."""
+
+    digest = hmac.new(_commitment_key(secret), digestmod=hashlib.sha256)
+    with manifest_path.open("rb") as stream:
+        while chunk := stream.read(64 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _write_base64url(source: BinaryIO, destination: BinaryIO) -> None:
+    carry = b""
+    while chunk := source.read(64 * 1024):
+        data = carry + chunk
+        complete = len(data) // 3 * 3
+        if complete:
+            destination.write(base64.urlsafe_b64encode(data[:complete]))
+        carry = data[complete:]
+    if carry:
+        destination.write(base64.urlsafe_b64encode(carry).rstrip(b"="))
+
+
+def seal_manifest_file(manifest_path: Path, seal_path: Path, secret: bytes) -> None:
+    """Encrypt canonical manifest bytes from disk into a canonical v1 seal."""
+
+    salt = os.urandom(_SALT_BYTES)
+    nonce = os.urandom(_NONCE_BYTES)
+    descriptor, raw_cipher_path = tempfile.mkstemp(prefix=".splitseal-ciphertext-")
+    os.close(descriptor)
+    ciphertext_path = Path(raw_cipher_path)
+    try:
+        encryptor = Cipher(
+            algorithms.AES(_encryption_key(secret, salt)),
+            modes.GCM(nonce),
+        ).encryptor()
+        encryptor.authenticate_additional_data(_AAD)
+        with manifest_path.open("rb") as manifest, ciphertext_path.open("wb") as ciphertext:
+            while chunk := manifest.read(64 * 1024):
+                ciphertext.write(encryptor.update(chunk))
+            ciphertext.write(encryptor.finalize())
+            ciphertext.write(encryptor.tag)
+        kdf: JSONValue = {
+            "name": "scrypt",
+            "n": _KDF_N,
+            "r": _KDF_R,
+            "p": _KDF_P,
+            "salt": _b64encode(salt),
+        }
+        with seal_path.open("wb") as seal, ciphertext_path.open("rb") as ciphertext:
+            seal.write(b'{"cipher":{"ciphertext":"')
+            _write_base64url(ciphertext, seal)
+            seal.write(b'","name":"aes-256-gcm","nonce":')
+            seal.write(canonicalize(_b64encode(nonce)))
+            seal.write(b'},"kdf":')
+            seal.write(canonicalize(kdf))
+            seal.write(b',"schema_version":"splitseal.seal.v1"}\n')
+            seal.flush()
+            os.fsync(seal.fileno())
+    finally:
+        ciphertext_path.unlink(missing_ok=True)
 
 
 def seal_manifest(manifest: JSONValue, secret: bytes) -> bytes:

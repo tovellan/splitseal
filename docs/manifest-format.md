@@ -54,7 +54,7 @@ and it does not prove authenticity or provenance.
 
 ## Compatibility
 
-New optional report fields may appear within a 0.3 release. Artifact interpretation does
+New optional report fields may appear within a 0.4 release. Artifact interpretation does
 not change without a new schema identifier. Attestation validation fails closed on unknown
 fields as well as an unknown schema so disclosure constraints remain explicit.
 

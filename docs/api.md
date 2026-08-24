@@ -1,6 +1,6 @@
 # Python API
 
-The stable 0.3 API is exported from `splitseal`.
+The stable 0.4 API is exported from `splitseal`.
 
 ## Canonicalization
 
@@ -85,3 +85,7 @@ Paths are always relative to `root`. Expected failures raise `SplitSealError` wi
 `code`, `message`, and `details` fields. Details are intended for local diagnostics and
 may include a caller-supplied file name. Do not publish raw local error logs without
 review.
+
+Exact-only `freeze_release` calls use bounded-memory disk spooling automatically.
+Configurations containing a similarity plugin retain the in-memory plugin path. Both
+paths produce identical canonical private-manifest bytes for the same inputs.

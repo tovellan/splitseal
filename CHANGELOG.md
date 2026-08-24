@@ -3,6 +3,26 @@
 All notable changes are recorded here. The format follows Keep a Changelog and the
 project uses Semantic Versioning.
 
+## [0.4.0] - 2026-08-24
+
+### Added
+
+- Stream exact-only JSONL, CSV, and optional Parquet records without retaining complete
+  splits in Python memory.
+- Use a disk-backed exact-digest index and ordered digest spools while preserving canonical
+  private-manifest and public-attestation bytes.
+- Commit to and encrypt canonical manifests incrementally with the existing v1
+  cryptographic format and rollback-safe artifact pair installation.
+- Add generated equivalence properties, a bounded-peak integration test, and a local
+  synthetic throughput and peak-memory benchmark.
+
+### Fixed
+
+- Preserve the pre-streaming universal-newline normalization for multiline CSV fields so
+  unchanged CRLF inputs retain their canonical record digests.
+- Preserve SS011 and SS021 domain errors from valid Parquet containers instead of wrapping
+  them as malformed-container SS020 errors.
+
 ## [0.3.0] - 2026-08-24
 
 ### Added
@@ -68,6 +88,7 @@ project uses Semantic Versioning.
 - JSON and SARIF 2.1.0 reports.
 - Repository-root containment, Unicode normalization, and symlink checks.
 
+[0.4.0]: https://github.com/tovellan/splitseal/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/tovellan/splitseal/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/tovellan/splitseal/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/tovellan/splitseal/compare/v0.2.1...v0.2.2
