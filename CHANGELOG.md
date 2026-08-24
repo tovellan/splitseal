@@ -21,7 +21,10 @@ project uses Semantic Versioning.
 - Require an exact release-tag and package-version match before building release assets.
 - Publish a sorted `SHA256SUMS` file with the wheel and source archive, and refuse stale
   output directories or release-asset overwrites.
+- Record Sigstore-signed GitHub build-provenance attestations for the checksummed wheel
+  and source archive.
 - Scope checksum instructions to releases produced after the new workflow takes effect.
+- Scope provenance instructions to releases produced after attestation takes effect.
 
 ### Fixed
 
@@ -53,6 +56,8 @@ project uses Semantic Versioning.
 - Validate tag annotations and generated release notes as public metadata.
 - Require exact draft and published remote asset names, SHA-256 digests, and bytes against
   a protected-tag rebuild.
+- Verify each distribution's exact provenance identity before irreversible publication
+  and on published-release reruns.
 - Remove the build tool's hidden output helper before exact release-asset validation.
 - Remove generated contributor credits and reject every private-workflow, local-path,
   attribution, personal-account, positioning, and prohibited-punctuation class before

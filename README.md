@@ -39,6 +39,20 @@ files, verify the distributions before installation:
 shasum -a 256 -c SHA256SUMS
 ```
 
+Starting with the first release produced after the provenance workflow change, GitHub
+also records signed build provenance for both distributions. Release v0.2.3 predates
+that workflow and has no distribution attestations. For a later release, substitute its
+actual version and verify a downloaded wheel against this public repository:
+
+```console
+gh attestation verify splitseal-X.Y.Z-py3-none-any.whl \
+  --repo tovellan/splitseal \
+  --signer-workflow github.com/tovellan/splitseal/.github/workflows/release-assets.yml \
+  --signer-digest TAG_COMMIT_SHA \
+  --source-ref refs/tags/vX.Y.Z \
+  --source-digest TAG_COMMIT_SHA
+```
+
 For Parquet input, add the optional dependency after cloning:
 
 ```console

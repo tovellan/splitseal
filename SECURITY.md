@@ -31,7 +31,12 @@ The release workflow accepts an existing version tag, requires it to match the p
 version exactly, and builds into an empty directory. It produces a sorted `SHA256SUMS`
 alongside the wheel and source archive, then attaches every asset while the release is
 still a draft before publication. Checksums establish download integrity against the
-GitHub release; they are not a publisher signature or an independent transparency log.
+GitHub release. GitHub records Sigstore-signed build-provenance attestations for the
+checksummed wheel and source archive. Each attestation binds the artifact digest to the
+repository's release workflow identity. It does not replace source review, establish
+dataset quality, or act as an independent transparency log. Before publication and on a
+published-release rerun, the workflow verifies each distribution against the exact signer
+workflow, signer commit, protected tag ref, and source commit.
 Closure requires the GitHub Releases API to report `immutable: true` and GitHub's
 automatic release attestation to verify. The GitHub Releases API reports
 `immutable: false` for release v0.2.3.
