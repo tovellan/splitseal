@@ -28,6 +28,9 @@ project uses Semantic Versioning.
 - Require exact JSON integer types for every private-seal scrypt parameter.
 - Avoid exposing resolved absolute configuration paths in machine-readable read errors.
 - Return stable machine-readable errors for excessively nested structured inputs.
+- Normalize invalid digest input types and count ranges to stable `SS012` errors.
+- Reject whitespace and every other non-exact spelling of 64-character SHA-256 hex.
+- Preserve one-pass digest iterables required by bounded-memory release processing.
 
 ## [0.4.0] - 2026-08-24
 

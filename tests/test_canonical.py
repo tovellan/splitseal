@@ -89,11 +89,44 @@ def test_sequence_digest_is_order_sensitive() -> None:
     assert sequence_digest([first, second]) != sequence_digest([second, first])
 
 
+def test_sequence_digest_accepts_one_pass_iterables() -> None:
+    items = [record_digest({"id": "one"}), record_digest({"id": "two"})]
+    assert sequence_digest(item for item in items) == sequence_digest(items)
+
+
 @pytest.mark.parametrize("digest", ["not-hex", "ab"])
 def test_sequence_digest_rejects_malformed_digest(digest: str) -> None:
     with pytest.raises(SplitSealError) as caught:
         sequence_digest([digest])
     assert caught.value.code == "SS012"
+
+
+@pytest.mark.parametrize(
+    "digests",
+    [None, "00" * 32, b"00", [None], [1]],
+)
+def test_sequence_digest_rejects_wrong_runtime_types(digests: object) -> None:
+    with pytest.raises(SplitSealError) as caught:
+        sequence_digest(digests)  # type: ignore[arg-type]
+    assert caught.value.code == "SS012"
+
+
+@pytest.mark.parametrize(
+    "digest",
+    [
+        "00 " * 32,
+        "00" * 16 + "\n" + "00" * 16,
+        "00" * 16 + "\t" + "00" * 16,
+    ],
+)
+def test_digest_functions_reject_ascii_whitespace(digest: str) -> None:
+    with pytest.raises(SplitSealError) as sequence_error:
+        sequence_digest([digest])
+    assert sequence_error.value.code == "SS012"
+
+    with pytest.raises(SplitSealError) as dataset_error:
+        dataset_digest({"split": (1, digest)})
+    assert dataset_error.value.code == "SS012"
 
 
 def test_dataset_digest_sorts_split_names_but_includes_counts() -> None:
@@ -111,6 +144,25 @@ def test_dataset_digest_rejects_invalid_inputs() -> None:
         dataset_digest({"a": (1, "invalid")})
     with pytest.raises(SplitSealError):
         dataset_digest({"a": (1, "00")})
+
+
+@pytest.mark.parametrize(
+    "splits",
+    [
+        None,
+        {1: (1, "00" * 32)},
+        {"a": [1, "00" * 32]},
+        {"a": ("1", "00" * 32)},
+        {"a": (True, "00" * 32)},
+        {"a": (2**64, "00" * 32)},
+        {"a": (1, None)},
+        {"\ud800": (1, "00" * 32)},
+    ],
+)
+def test_dataset_digest_rejects_wrong_runtime_types(splits: object) -> None:
+    with pytest.raises(SplitSealError) as caught:
+        dataset_digest(splits)  # type: ignore[arg-type]
+    assert caught.value.code == "SS012"
 
 
 def test_ensure_record_rejects_non_object() -> None:
