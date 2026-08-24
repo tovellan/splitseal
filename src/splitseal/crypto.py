@@ -62,6 +62,8 @@ def _require_fields(value: dict[object, object], expected: set[str], context: st
 
 
 def validate_secret(secret: bytes) -> None:
+    if not isinstance(secret, bytes):
+        raise fail("SS041", "key material must be bytes")
     if len(secret) < _MINIMUM_SECRET_BYTES:
         raise fail("SS041", "key material must contain at least 16 bytes")
 

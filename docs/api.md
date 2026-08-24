@@ -53,6 +53,10 @@ validate_public_attestation(
 )
 ```
 
+Release keys passed to Python APIs must be `bytes` containing at least 16 bytes. Wrong
+runtime types and shorter values fail with `SS041`; `splitseal keygen` remains the
+recommended way to create a 32-byte key.
+
 `validate_public_attestation` accepts only a public attestation path. It validates the
 schema, RFC 8785 encoding, field types, aggregate consistency, and redaction constraints.
 It does not authenticate the commitment or establish provenance, and its report always

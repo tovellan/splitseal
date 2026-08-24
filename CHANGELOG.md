@@ -31,6 +31,7 @@ project uses Semantic Versioning.
 - Normalize invalid digest input types and count ranges to stable `SS012` errors.
 - Reject whitespace and every other non-exact spelling of 64-character SHA-256 hex.
 - Preserve one-pass digest iterables required by bounded-memory release processing.
+- Normalize non-byte key material to stable `SS041` errors across Python APIs.
 
 ## [0.4.0] - 2026-08-24
 
