@@ -50,6 +50,12 @@ Any returned finding blocks the freeze. Public attestations report only `pass` o
 `not_run`; plugin names, versions, scores, settings, record indexes, and split names stay
 inside local execution or the encrypted private manifest.
 
+The declared plugin `name` must be a non-empty string equal to the configured entry-point
+name, and `version` must be a non-empty string. Entry-point discovery, loading, identity,
+and interface failures return `SS060`. Failures from a custom loader, identity or
+interface validation, analysis iteration, or version evidence return `SS061`. No release
+artifacts are written after either failure.
+
 Plugins are trusted code with direct access to private records. Process isolation,
 network restriction, deterministic execution, and dependency review are the operator's
 responsibility.

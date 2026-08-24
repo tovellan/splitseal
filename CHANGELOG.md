@@ -32,6 +32,7 @@ project uses Semantic Versioning.
 - Reject whitespace and every other non-exact spelling of 64-character SHA-256 hex.
 - Preserve one-pass digest iterables required by bounded-memory release processing.
 - Normalize non-byte key material to stable `SS041` errors across Python APIs.
+- Normalize plugin discovery, loading, execution, and evidence failures to SS060 or SS061.
 
 ## [0.4.0] - 2026-08-24
 

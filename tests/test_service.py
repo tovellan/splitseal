@@ -10,7 +10,7 @@ import pytest
 
 import splitseal.service as service_module
 from splitseal.canonical import Record, canonicalize
-from splitseal.errors import SplitSealError
+from splitseal.errors import SplitSealError, fail
 from splitseal.plugins import SimilarityFinding
 from splitseal.service import (
     diff_releases,
@@ -436,6 +436,8 @@ def test_similarity_plugin_exception_is_wrapped(project: Path) -> None:
     write_config(project, similarity='\n[[similarity]]\nplugin="broken"\n')
 
     class BrokenPlugin(PassingPlugin):
+        name = "broken"
+
         def analyze(
             self,
             splits: Mapping[str, Sequence[Record]],
@@ -453,6 +455,118 @@ def test_similarity_plugin_exception_is_wrapped(project: Path) -> None:
             plugin_loader=lambda _name: BrokenPlugin(),
         )
     assert caught.value.code == "SS061"
+
+
+def test_similarity_plugin_loader_and_evidence_exceptions_are_wrapped(project: Path) -> None:
+    write_config(project, similarity='\n[[similarity]]\nplugin="broken"\n')
+
+    class BrokenVersionPlugin(PassingPlugin):
+        name = "broken"
+
+        @property
+        def version(self) -> str:
+            raise RuntimeError("synthetic version failure")
+
+    def broken_loader(_name: str) -> PassingPlugin:
+        raise RuntimeError("synthetic loader failure")
+
+    for loader in (broken_loader, lambda _name: BrokenVersionPlugin()):
+        with pytest.raises(SplitSealError) as caught:
+            freeze_release(
+                root=project,
+                config_path="splitseal.toml",
+                seal_path="artifacts/fail.sseal",
+                attestation_path="artifacts/fail.json",
+                secret=SECRET,
+                plugin_loader=loader,
+            )
+        assert caught.value.code == "SS061"
+
+
+def test_plugin_splitseal_errors_are_normalized(project: Path) -> None:
+    write_config(project, similarity='\n[[similarity]]\nplugin="broken"\n')
+
+    class BrokenVersionPlugin(PassingPlugin):
+        name = "broken"
+
+        @property
+        def version(self) -> str:
+            raise fail("SS999", "synthetic version failure", private="detail")
+
+    class BrokenGeneratorPlugin(PassingPlugin):
+        name = "broken"
+
+        def analyze(
+            self,
+            splits: Mapping[str, Sequence[Record]],
+            settings: Mapping[str, Any],
+        ) -> Iterable[SimilarityFinding]:
+            yield from ()
+            raise fail("SS999", "synthetic iteration failure", private="detail")
+
+    def broken_loader(_name: str) -> PassingPlugin:
+        raise fail("SS999", "synthetic loader failure", private="detail")
+
+    loaders = (
+        broken_loader,
+        lambda _name: BrokenVersionPlugin(),
+        lambda _name: BrokenGeneratorPlugin(),
+    )
+    for loader in loaders:
+        with pytest.raises(SplitSealError) as caught:
+            freeze_release(
+                root=project,
+                config_path="splitseal.toml",
+                seal_path="artifacts/fail.sseal",
+                attestation_path="artifacts/fail.json",
+                secret=SECRET,
+                plugin_loader=loader,
+            )
+        assert caught.value.code == "SS061"
+        assert caught.value.details == {"plugin": "broken"}
+
+
+def test_official_plugin_loader_preserves_ss060(project: Path) -> None:
+    write_config(project, similarity='\n[[similarity]]\nplugin="not-installed"\n')
+
+    with pytest.raises(SplitSealError) as caught:
+        freeze_release(
+            root=project,
+            config_path="splitseal.toml",
+            seal_path="artifacts/fail.sseal",
+            attestation_path="artifacts/fail.json",
+            secret=SECRET,
+        )
+    assert caught.value.code == "SS060"
+
+
+def test_custom_similarity_loader_rejects_invalid_declared_identity(project: Path) -> None:
+    write_config(project, similarity='\n[[similarity]]\nplugin="synthetic-plugin"\n')
+
+    def analyze(*_args: object) -> list[object]:
+        return []
+
+    invalid_interfaces = [
+        {"version": "1.0.0", "analyze": analyze},
+        {"name": 1, "version": "1.0.0", "analyze": analyze},
+        {"name": "", "version": "1.0.0", "analyze": analyze},
+        {"name": "other", "version": "1.0.0", "analyze": analyze},
+        {"name": "synthetic-plugin", "analyze": analyze},
+        {"name": "synthetic-plugin", "version": 1, "analyze": analyze},
+        {"name": "synthetic-plugin", "version": "", "analyze": analyze},
+    ]
+    for attributes in invalid_interfaces:
+        plugin = type("Plugin", (), attributes)()
+        with pytest.raises(SplitSealError) as caught:
+            freeze_release(
+                root=project,
+                config_path="splitseal.toml",
+                seal_path="artifacts/fail.sseal",
+                attestation_path="artifacts/fail.json",
+                secret=SECRET,
+                plugin_loader=lambda _name, value=plugin: value,
+            )
+        assert caught.value.code == "SS061"
 
 
 def test_diff_reports_aggregate_changes_without_identifiers(project: Path) -> None:

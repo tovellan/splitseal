@@ -246,3 +246,105 @@ def test_plugin_loader_rejects_missing_entry_point() -> None:
     with pytest.raises(SplitSealError) as caught:
         load_similarity_plugin("not-installed")
     assert caught.value.code == "SS060"
+
+
+def test_plugin_loader_wraps_discovery_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_discovery(*, group: str) -> object:
+        assert group == "splitseal.similarity"
+        raise RuntimeError("synthetic discovery failure")
+
+    monkeypatch.setattr("splitseal.plugins.entry_points", fail_discovery)
+    with pytest.raises(SplitSealError) as caught:
+        load_similarity_plugin("synthetic")
+    assert caught.value.code == "SS060"
+
+
+def test_plugin_loader_wraps_interface_property_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    class BrokenPlugin:
+        name = "synthetic"
+
+        def analyze(self) -> None:
+            return None
+
+        @property
+        def version(self) -> str:
+            raise RuntimeError("synthetic version failure")
+
+    class EntryPoint:
+        name = "synthetic"
+
+        def load(self) -> type[BrokenPlugin]:
+            return BrokenPlugin
+
+    monkeypatch.setattr("splitseal.plugins.entry_points", lambda **_kwargs: [EntryPoint()])
+    with pytest.raises(SplitSealError) as caught:
+        load_similarity_plugin("synthetic")
+    assert caught.value.code == "SS060"
+
+
+def test_plugin_loader_rejects_invalid_declared_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    def analyze(*_args: object) -> list[object]:
+        return []
+
+    class EntryPoint:
+        name = "synthetic"
+
+        def __init__(self, attributes: dict[str, object]) -> None:
+            self.attributes = attributes
+
+        def load(self) -> object:
+            attributes = self.attributes
+
+            class Plugin:
+                pass
+
+            for key, value in attributes.items():
+                setattr(Plugin, key, value)
+            return Plugin
+
+    invalid_interfaces = [
+        {"version": "1.0.0", "analyze": analyze},
+        {"name": 1, "version": "1.0.0", "analyze": analyze},
+        {"name": "", "version": "1.0.0", "analyze": analyze},
+        {"name": "other", "version": "1.0.0", "analyze": analyze},
+        {"name": "synthetic", "analyze": analyze},
+        {"name": "synthetic", "version": 1, "analyze": analyze},
+        {"name": "synthetic", "version": "", "analyze": analyze},
+    ]
+    for attributes in invalid_interfaces:
+        monkeypatch.setattr(
+            "splitseal.plugins.entry_points",
+            lambda attributes=attributes, **_kwargs: [EntryPoint(attributes)],
+        )
+        with pytest.raises(SplitSealError) as caught:
+            load_similarity_plugin("synthetic")
+        assert caught.value.code == "SS060"
+
+
+@pytest.mark.parametrize("attribute", ["name", "version"])
+def test_plugin_loader_wraps_identity_property_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    attribute: str,
+) -> None:
+    class BrokenPlugin:
+        name = "synthetic"
+        version = "1.0.0"
+
+        def analyze(self) -> None:
+            return None
+
+        def __getattribute__(self, key: str) -> object:
+            if key == attribute:
+                raise RuntimeError(f"synthetic {key} failure")
+            return super().__getattribute__(key)
+
+    class EntryPoint:
+        name = "synthetic"
+
+        def load(self) -> type[BrokenPlugin]:
+            return BrokenPlugin
+
+    monkeypatch.setattr("splitseal.plugins.entry_points", lambda **_kwargs: [EntryPoint()])
+    with pytest.raises(SplitSealError) as caught:
+        load_similarity_plugin("synthetic")
+    assert caught.value.code == "SS060"
