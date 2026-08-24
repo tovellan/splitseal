@@ -32,3 +32,7 @@ audit. Keep the human-readable upstream version in a trailing comment.
 Public commits and merge commits must use the generic organization identity
 `Tovellan Maintainers <noreply@github.com>`. Do not publish personal names or email
 addresses in commit metadata, and do not add authorship or generator-attribution trailers.
+
+Protected releases must use an existing annotated or signed version tag and the
+`Release assets` workflow. Do not publish a release manually before its assets are
+attached: publication activates release immutability and prevents later asset changes.

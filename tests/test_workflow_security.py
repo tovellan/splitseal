@@ -66,7 +66,7 @@ def test_release_jobs_are_not_cancelled_after_publication() -> None:
     assert concurrency.get("cancel-in-progress") is False
     group = concurrency.get("group")
     assert isinstance(group, str)
-    assert "${{ github.event.release.tag_name }}" in group
+    assert "${{ inputs.release_tag }}" in group
 
 
 def test_validation_workflows_use_per_ref_cancellation() -> None:

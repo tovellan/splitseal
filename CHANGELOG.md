@@ -33,6 +33,26 @@ project uses Semantic Versioning.
 - Preserve one-pass digest iterables required by bounded-memory release processing.
 - Normalize non-byte key material to stable `SS041` errors across Python APIs.
 - Normalize plugin discovery, loading, execution, and evidence failures to SS060 or SS061.
+- Attach distributions while a release is still a draft, then require GitHub release
+  immutability and automatic release-attestation verification after publication.
+- Resolve the release tag before checkout and require its commit to equal protected
+  `main`, then build from the verified commit SHA.
+- Require the release ref to begin with an annotated or signed tag object rather than a
+  lightweight tag.
+- Depend on organization-enforced release immutability and require generic tagger metadata.
+- Make release-attestation verification retryable without attempting to recreate an
+  already published release.
+- Resume partial draft uploads without overwriting conflicting assets, and allow
+  verification-only reruns after protected `main` advances.
+- Bind manual release dispatches to the exact protected version-tag revision and require
+  server-side immutable action SHA pins.
+- Validate tag annotations and generated release notes as public metadata.
+- Require exact draft and published remote asset names, SHA-256 digests, and bytes against
+  a protected-tag rebuild.
+- Remove the build tool's hidden output helper before exact release-asset validation.
+- Remove generated contributor credits and reject every private-workflow, local-path,
+  attribution, personal-account, positioning, and prohibited-punctuation class before
+  release-note publication.
 
 ## [0.4.0] - 2026-08-24
 
