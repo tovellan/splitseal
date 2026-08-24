@@ -91,7 +91,7 @@ def _iter_jsonl(path: Path) -> Iterator[Record]:
             )
         except SplitSealError:
             raise
-        except (json.JSONDecodeError, UnicodeError) as exc:
+        except (RecursionError, json.JSONDecodeError, UnicodeError) as exc:
             raise fail("SS020", "malformed JSONL record", line=line_number) from exc
         yield ensure_record(value, location=f"line {line_number}")
     if not found:

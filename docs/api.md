@@ -14,7 +14,9 @@ digest = record_digest(record)
 
 `canonicalize` accepts JSON-compatible values in the RFC 8785 interoperable domain.
 It rejects non-string object keys, non-finite floats, unsupported objects, and integers
-outside the exactly interoperable range.
+outside the exactly interoperable range. Structured values may contain at most 100 nested
+array or object levels; deeper values fail with `SS011` instead of depending on the
+Python interpreter recursion limit.
 
 ## Release operations
 

@@ -19,9 +19,10 @@ _RECORD_DOMAIN = b"splitseal-record-v1\x00"
 _SEQUENCE_DOMAIN = b"splitseal-sequence-v1\x00"
 _DATASET_DOMAIN = b"splitseal-dataset-v1\x00"
 _MAX_INTEROPERABLE_INTEGER = 9_007_199_254_740_991
+_MAX_NESTING_DEPTH = 100
 
 
-def _validate_json(value: object, location: str = "$") -> None:
+def _validate_json(value: object, location: str = "$", depth: int = 0) -> None:
     if value is None or isinstance(value, (str, bool)):
         return
     if isinstance(value, int):
@@ -37,14 +38,28 @@ def _validate_json(value: object, location: str = "$") -> None:
             raise fail("SS011", "non-finite numbers are not canonical JSON", location=location)
         return
     if isinstance(value, list):
+        if depth >= _MAX_NESTING_DEPTH:
+            raise fail(
+                "SS011",
+                "structured value exceeds the maximum nesting depth",
+                location=location,
+                maximum_depth=_MAX_NESTING_DEPTH,
+            )
         for index, item in enumerate(value):
-            _validate_json(item, f"{location}[{index}]")
+            _validate_json(item, f"{location}[{index}]", depth + 1)
         return
     if isinstance(value, Mapping):
+        if depth >= _MAX_NESTING_DEPTH:
+            raise fail(
+                "SS011",
+                "structured value exceeds the maximum nesting depth",
+                location=location,
+                maximum_depth=_MAX_NESTING_DEPTH,
+            )
         for key, item in value.items():
             if not isinstance(key, str):
                 raise fail("SS011", "JSON object keys must be strings", location=location)
-            _validate_json(item, f"{location}.{key}")
+            _validate_json(item, f"{location}.{key}", depth + 1)
         return
     raise fail("SS011", "unsupported value in structured record", location=location)
 
@@ -52,10 +67,13 @@ def _validate_json(value: object, location: str = "$") -> None:
 def canonicalize(value: JSONValue) -> bytes:
     """Return RFC 8785 canonical JSON bytes after strict input validation."""
 
-    _validate_json(value)
+    try:
+        _validate_json(value)
+    except RecursionError as exc:
+        raise fail("SS011", "structured value exceeds the maximum nesting depth") from exc
     try:
         return rfc8785.dumps(value)
-    except (rfc8785.CanonicalizationError, UnicodeError) as exc:
+    except (RecursionError, rfc8785.CanonicalizationError, UnicodeError) as exc:
         raise fail("SS011", "value cannot be encoded as canonical JSON") from exc
 
 

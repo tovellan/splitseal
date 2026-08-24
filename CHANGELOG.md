@@ -27,6 +27,7 @@ project uses Semantic Versioning.
   preserving the v1 schema and all generated seal bytes.
 - Require exact JSON integer types for every private-seal scrypt parameter.
 - Avoid exposing resolved absolute configuration paths in machine-readable read errors.
+- Return stable machine-readable errors for excessively nested structured inputs.
 
 ## [0.4.0] - 2026-08-24
 

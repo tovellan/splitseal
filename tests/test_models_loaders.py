@@ -101,6 +101,16 @@ def test_jsonl_loader_rejects_empty_malformed_and_non_finite(tmp_path: Path) -> 
             load_records(path, "jsonl")
 
 
+def test_jsonl_loader_rejects_excessive_nesting_with_stable_error(tmp_path: Path) -> None:
+    path = tmp_path / "input.jsonl"
+    path.write_text('{"value":' + "[" * 101 + "0" + "]" * 101 + "}\n", encoding="utf-8")
+
+    with pytest.raises(SplitSealError) as caught:
+        load_records(path, "jsonl")
+
+    assert caught.value.code == "SS011"
+
+
 def test_csv_loader_maps_all_values_to_strings(tmp_path: Path) -> None:
     path = tmp_path / "input.csv"
     path.write_text("id,value\none,42\n", encoding="utf-8")
