@@ -19,3 +19,8 @@ attestation disclosure, cross-split duplicate bypass, seal authentication, key h
 unsafe plugin behavior, and CI dependency substitution. External GitHub Action references
 are release-gated to full commit SHAs. The documented trust boundaries in
 [`docs/threat-model.md`](docs/threat-model.md) are part of the security contract.
+
+CI jobs receive read-only repository contents by default and checkout removes persisted
+credentials after initial fetch. Jobs have explicit timeouts, and superseded validation
+runs are cancelled per ref. Published-release jobs are serialized per tag but never
+cancelled by a later run.
