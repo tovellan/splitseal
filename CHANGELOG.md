@@ -23,6 +23,9 @@ project uses Semantic Versioning.
 
 - Parse YAML action definitions semantically and discover composite actions in any
   tracked directory so formatting and placement cannot bypass immutable-pin checks.
+- Reject unknown private-seal envelope fields plus padded or noncanonical base64url while
+  preserving the v1 schema and all generated seal bytes.
+- Require exact JSON integer types for every private-seal scrypt parameter.
 
 ## [0.4.0] - 2026-08-24
 
