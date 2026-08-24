@@ -26,6 +26,7 @@ project uses Semantic Versioning.
 - Reject unknown private-seal envelope fields plus padded or noncanonical base64url while
   preserving the v1 schema and all generated seal bytes.
 - Require exact JSON integer types for every private-seal scrypt parameter.
+- Avoid exposing resolved absolute configuration paths in machine-readable read errors.
 
 ## [0.4.0] - 2026-08-24
 

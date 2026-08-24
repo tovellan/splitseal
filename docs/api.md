@@ -83,8 +83,9 @@ local rotation workflows that need to assemble multiple sorted active or revoked
 
 Paths are always relative to `root`. Expected failures raise `SplitSealError` with stable
 `code`, `message`, and `details` fields. Details are intended for local diagnostics and
-may include a caller-supplied file name. Do not publish raw local error logs without
-review.
+may include a caller-supplied relative path or an artifact basename. Resolved absolute
+dataset, key, configuration, and artifact paths are not included. Do not publish raw
+local error logs without review.
 
 Exact-only `freeze_release` calls use bounded-memory disk spooling automatically.
 Configurations containing a similarity plugin retain the in-memory plugin path. Both

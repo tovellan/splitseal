@@ -17,6 +17,17 @@ def test_load_config_accepts_minimal_valid_document(project: Path) -> None:
     assert [split.name for split in config.splits] == ["development", "private-evaluation"]
 
 
+def test_load_config_read_failure_does_not_expose_absolute_path(tmp_path: Path) -> None:
+    path = tmp_path / "sensitive-project-name" / "splitseal.toml"
+
+    with pytest.raises(SplitSealError) as caught:
+        load_config(path)
+
+    assert caught.value.code == "SS001"
+    assert caught.value.details == {"path": "splitseal.toml"}
+    assert str(tmp_path) not in str(caught.value.to_dict())
+
+
 @pytest.mark.parametrize(
     ("content", "message"),
     [
