@@ -160,7 +160,7 @@ def test_distribution_provenance_precedes_irreversible_publication() -> None:
 
     attest = _step("Attest wheel and source archive provenance")
     assert attest.get("if") == "steps.verify-tag.outputs.release_state != 'published'"
-    assert attest.get("uses") == ("actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d")
+    assert attest.get("uses") == ("actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6")
     settings = attest.get("with")
     assert isinstance(settings, Mapping)
     assert settings.get("subject-checksums") == "dist/SHA256SUMS"
