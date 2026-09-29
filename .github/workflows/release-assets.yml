@@ -18,6 +18,8 @@ concurrency:
 jobs:
   build:
     name: Build, publish, and verify release
+    if: ${{ github.ref == format('refs/tags/{0}', inputs.release_tag) && github.workflow_ref == format('tovellan/splitseal/.github/workflows/release-assets.yml@refs/tags/{0}', inputs.release_tag) }}
+    environment: release
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
