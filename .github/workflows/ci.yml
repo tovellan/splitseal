@@ -36,7 +36,7 @@ jobs:
         with:
           enable-cache: true
       - name: Install dependencies
-        run: uv sync --frozen --extra dev
+        run: uv sync --locked --extra dev
       - name: Run quality checks
         run: make check
 
@@ -58,7 +58,7 @@ jobs:
         with:
           enable-cache: false
       - name: Install dependencies
-        run: uv sync --frozen --extra dev --extra parquet
+        run: uv sync --locked --extra dev --extra parquet
       - name: Test optional Parquet input
         run: uv run pytest -o addopts="--strict-config --strict-markers" tests/test_parquet.py
       - name: Build and test a clean wheel installation
