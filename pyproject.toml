@@ -34,7 +34,7 @@ parquet = ["pyarrow==25.0.1"]
 dev = [
   "build==1.6.1",
   "hypothesis==6.168.3",
-  "mypy==2.3.1",
+  "mypy==2.4.0",
   "pip-audit==2.10.1",
   "pyyaml==6.0.3",
   "pytest==9.1.1",
