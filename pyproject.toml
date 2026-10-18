@@ -30,7 +30,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-parquet = ["pyarrow==25.0.1"]
+parquet = ["pyarrow==26.0.0"]
 dev = [
   "build==1.6.1",
   "hypothesis==6.168.5",
